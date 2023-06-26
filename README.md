@@ -1,3 +1,7 @@
+# 教程
+
+https://docs.aws.amazon.com/zh_cn/lambda/latest/dg/with-s3-tutorial.html#s3-tutorial-events-adminuser-create-test-function-upload-zip-test-manual-invoke
+
 # 图片处理格式参数
 
 图片处理命令形式为：

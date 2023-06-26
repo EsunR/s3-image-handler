@@ -3,14 +3,18 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "gulp -f ./gulpfile.js"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.359.0",
     "@types/node": "^20.3.1",
-    "aws-sdk": "^2.1404.0"
+    "del": "^6.1.1",
+    "gulp": "^4.0.2",
+    "gulp-zip": "^5.1.0"
   },
   "dependencies": {
     "sharp": "^0.32.1"
