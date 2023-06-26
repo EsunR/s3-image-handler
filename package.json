@@ -1,0 +1,18 @@
+{
+  "name": "s3-image-resize",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^20.3.1",
+    "aws-sdk": "^2.1404.0"
+  },
+  "dependencies": {
+    "sharp": "^0.32.1"
+  }
+}
