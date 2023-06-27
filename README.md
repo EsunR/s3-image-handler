@@ -7,7 +7,7 @@ https://docs.aws.amazon.com/zh_cn/lambda/latest/dg/with-s3-tutorial.html#s3-tuto
 图片处理命令形式为：
 
 ```
-x-bce-process=image/${action},${key}_${value},${key}_${value}/${action},${key}_${value}
+test.jpg__op__${action},${key}_${value},${key}_${value}/${action},${key}_${value}
 ```
 
 其中：

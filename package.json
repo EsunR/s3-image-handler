@@ -6,7 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "build": "gulp -f ./gulpfile.js",
-    "test": "node -r dotenv/config ./test.js"
+    "test": "node -r dotenv/config ./test.js",
+    "publish": "sh ./publish.sh"
   },
   "author": "",
   "license": "ISC",
