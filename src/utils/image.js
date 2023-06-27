@@ -1,6 +1,7 @@
 const sharp = require("sharp");
 const { validImageAction, isNumberString } = require("./validator");
 const { IMAGE_OPERATION_SPLIT } = require("./constance");
+const { logTime } = require(".");
 
 /**
  * 解析操作字符串
@@ -58,16 +59,59 @@ function resizeImage(imageHandle, args) {
     }
 }
 
-async function imageTransfer(imageBuffer, operationString) {
+async function imageTransfer(imageBuffer, operationString, options = {}) {
+    const { requestHeaders = "" } = options;
     let imageHandle = sharp(imageBuffer);
+    let metadata = await logTime(
+        async () => await imageHandle.metadata(),
+        "Read metadata before transform"
+    );
     const actions = parseOperationString(operationString);
+    let quality = 0;
+    let format = metadata.format;
     for (const action of actions) {
         const { actionName, args } = action;
         if (actionName === "resize") {
             imageHandle = resizeImage(imageHandle, args);
+        } else if (actionName === "quality") {
+            quality = Number(args.q);
+        } else if (actionName === "format") {
+            const targetFormat = args.f;
+            if (targetFormat === "auto") {
+                const requestAccept = requestHeaders["accept"];
+                if (requestAccept) {
+                    const acceptFormats = requestAccept
+                        .split(",")
+                        .map((item) => item.trim().split(";")[0]);
+                    if (acceptFormats.includes("image/webp")) {
+                        format = "webp";
+                    } else if (acceptFormats.includes("image/jpeg")) {
+                        format = "jpeg";
+                    } else if (acceptFormats.includes("image/png")) {
+                        format = "png";
+                    }
+                }
+            } else {
+                format = targetFormat;
+            }
         }
     }
-    return imageHandle.toBuffer();
+
+    // 如果有 format 或者 quality 操作，就需要重新对图片格式化
+    if (
+        actions.map((item) => item.actionName).includes("format") ||
+        actions.map((item) => item.actionName).includes("quality")
+    ) {
+        imageHandle = await logTime(
+            () =>
+                imageHandle.toFormat(format, { quality: quality || undefined }),
+            "Transform format and quantity"
+        );
+    }
+    return {
+        buffer: await imageHandle.toBuffer(),
+        contentType: `image/${format}`,
+    };
 }
 
 module.exports = {

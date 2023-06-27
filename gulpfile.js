@@ -1,21 +1,39 @@
 const del = require("del");
 const { series, src, dest } = require("gulp");
 const zip = require("gulp-zip");
+const { exec } = require("child_process");
 
-function clean(cb) {
-    del(["dist/**/*"]);
+function clean() {
+    return del(["dist/**/*"]);
+}
+
+function copy() {
+    return src(["src/**/*", "package.json", "package-lock.json"]).pipe(
+        dest("dist/")
+    );
+}
+
+function installNpm() {
+    return new Promise((resolve, reject) => {
+        exec("npm install --production", { cwd: "dist/" }, (err, stdout) => {
+            if (err) {
+                console.log(err);
+                reject(err);
+            } else {
+                console.log(stdout);
+                resolve();
+            }
+        });
+    });
+}
+
+function zipDist() {
+    return src("dist/**/*").pipe(zip("function.zip")).pipe(dest("./dist"));
+}
+
+function end(cb) {
+    console.log("🎊 Build complete!");
     cb();
 }
 
-function copy(cb) {
-    src(["src/**/*", "package.json", "package-lock.json"]).pipe(dest("dist/"));
-    cb();
-}
-
-function zipDist(cb) {
-    // src("dist/*").pipe(zip("function.zip")).pipe(dest("./"));
-    src("dist/**/*").pipe(zip("function.zip")).pipe(dest("./"));
-    cb();
-}
-
-exports.default = series(clean, copy, zipDist);
+exports.default = series(clean, copy, installNpm, zipDist, end);

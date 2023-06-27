@@ -1,21 +1,31 @@
-const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
+const {
+    S3Client,
+    GetObjectCommand,
+    PutObjectCommand,
+} = require("@aws-sdk/client-s3");
 const { errorResponse } = require("./utils/response");
 const { imageTransfer } = require("./utils/image");
 const { IMAGE_OPERATION_SPLIT } = require("./utils/constance");
 const fs = require("fs");
 const path = require("path");
 
-const { BUCKET = "esunr-webapp" } = process.env;
-const s3Client = new S3Client({
-    credentials: {
-        accessKeyId: "AKIAT4HJ6ISPJSSIQJWF",
-        secretAccessKey: "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",
-    },
-    region: "ap-east-1",
-});
+const { NODE_ENV, BUCKET, AK, SK, FILE_TARGET, URL } = process.env;
+console.log("NODE_ENV: ", NODE_ENV);
+// 生产环境运行在 AWS Lambda 上，不需要配置 AK 和 SK
+const s3Client = new S3Client(
+    NODE_ENV === "development"
+        ? {
+              credentials: {
+                  accessKeyId: AK,
+                  secretAccessKey: SK,
+              },
+          }
+        : undefined
+);
 
 exports.handler = async (event) => {
     /** @type {string} */
+    const requestHeaders = event?.headers;
     const query = event?.queryStringParameters?.query;
     if (!query) {
         errorResponse("Missing query parameter");
@@ -37,6 +47,7 @@ exports.handler = async (event) => {
     console.log("originFilePath: ", originFilePath);
 
     try {
+        const downloadStart = Date.now();
         const originImage = await s3Client.send(
             new GetObjectCommand({
                 Bucket: BUCKET,
@@ -44,18 +55,55 @@ exports.handler = async (event) => {
             })
         );
         const imageBuffer = await originImage.Body.transformToByteArray();
-        const transformedImageBuffer = await imageTransfer(
-            imageBuffer,
-            operationString
-        );
-        console.log("transformedImageBuffer: ", transformedImageBuffer);
-        // 将文件写到 output 文件夹下
-        const outPutPath = path.resolve(__dirname, "./output/");
-        fs.writeFileSync(
-            path.join(outPutPath, fileName),
-            transformedImageBuffer,
-            "binary"
-        );
+        console.log("Download time: ", Date.now() - downloadStart, "ms");
+
+        const transStart = Date.now();
+        const { buffer: transformedImageBuffer, contentType } =
+            await imageTransfer(imageBuffer, operationString, {
+                requestHeaders,
+            });
+        console.log("Transform time: ", Date.now() - transStart, "ms");
+
+        // 开发模式，文件上传本地
+        if (FILE_TARGET === "local") {
+            // 判断有没有 output 文件，没有的话就创建
+            const outPutPath = path.resolve(__dirname, "../output/");
+            if (!fs.existsSync(outPutPath)) {
+                fs.mkdirSync(outPutPath);
+            }
+            const fileExt = contentType.split("/")[1];
+            fs.writeFileSync(
+                path.join(
+                    outPutPath,
+                    fileExt ? `${fileName}.${fileExt}` : fileName
+                ),
+                transformedImageBuffer,
+                "binary"
+            );
+            return {
+                output: path.join(
+                    outPutPath,
+                    fileExt ? `${fileName}.${fileExt}` : fileName
+                ),
+            };
+        }
+        // 线上文件上传到 S3
+        else {
+            await s3Client.send(
+                new PutObjectCommand({
+                    Bucket: BUCKET,
+                    Key: query,
+                    Body: transformedImageBuffer,
+                    ContentType: contentType,
+                })
+            );
+            return {
+                statusCode: 301,
+                headers: {
+                    Location: `${URL}/${query}`,
+                },
+            };
+        }
     } catch (e) {
         console.log("Exception:\n", e);
         return errorResponse("Exception: " + e.message, e.statusCode || 400);
