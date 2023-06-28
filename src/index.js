@@ -8,8 +8,18 @@ const { imageTransfer } = require("./utils/image");
 const { IMAGE_OPERATION_SPLIT } = require("./utils/constance");
 const fs = require("fs");
 const path = require("path");
+const util = require("util");
 
-const { NODE_ENV, BUCKET, AK, SK, FILE_TARGET, URL } = process.env;
+const {
+    NODE_ENV,
+    BUCKET,
+    REGION,
+    ENDPOINT,
+    AK,
+    SK,
+    FILE_TARGET,
+    URL,
+} = process.env;
 console.log("NODE_ENV: ", NODE_ENV);
 // 生产环境运行在 AWS Lambda 上，不需要配置 AK 和 SK
 const s3Client = new S3Client(
@@ -19,23 +29,32 @@ const s3Client = new S3Client(
                   accessKeyId: AK,
                   secretAccessKey: SK,
               },
+              region: REGION,
+              endpoint: ENDPOINT,
           }
-        : undefined
+        : {
+              region: REGION,
+              endpoint: ENDPOINT,
+          }
 );
 
 exports.handler = async (event) => {
+    console.log(
+        "Reading options from event:\n",
+        util.inspect(event, { depth: 5 })
+    );
     /** @type {string} */
     const requestHeaders = event?.headers;
     const query = event?.queryStringParameters?.query;
     if (!query) {
-        errorResponse("Missing query parameter");
+        return errorResponse("Missing query parameter");
     }
     const fileName = query.split("/")[query.split("/").length - 1];
     if (!fileName) {
-        errorResponse("Missing file name");
+        return errorResponse("Missing file name");
     }
     if (fileName.split(IMAGE_OPERATION_SPLIT).length < 2) {
-        errorResponse("Missing image operation");
+        return errorResponse("Missing image operation");
     }
     const operationString = fileName.slice(
         fileName.match(new RegExp(IMAGE_OPERATION_SPLIT)).index
