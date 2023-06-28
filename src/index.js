@@ -10,16 +10,8 @@ const fs = require("fs");
 const path = require("path");
 const util = require("util");
 
-const {
-    NODE_ENV,
-    BUCKET,
-    REGION,
-    ENDPOINT,
-    AK,
-    SK,
-    FILE_TARGET,
-    URL,
-} = process.env;
+const { NODE_ENV, BUCKET, REGION, ENDPOINT, AK, SK, FILE_TARGET, URL } =
+    process.env;
 console.log("NODE_ENV: ", NODE_ENV);
 // 生产环境运行在 AWS Lambda 上，不需要配置 AK 和 SK
 const s3Client = new S3Client(
