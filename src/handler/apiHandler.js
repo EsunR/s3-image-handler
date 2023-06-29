@@ -1,8 +1,4 @@
-const {
-    GetObjectCommand,
-    PutObjectCommand,
-    S3Client,
-} = require("@aws-sdk/client-s3");
+const { GetObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { errorResponse } = require("../utils/response");
 const { imageTransfer } = require("../utils/image");
 const { IMAGE_OPERATION_SPLIT } = require("../utils/constance");

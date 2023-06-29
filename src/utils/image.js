@@ -59,8 +59,7 @@ function resizeImage(imageHandle, args) {
     }
 }
 
-async function imageTransfer(imageBuffer, operationString, options = {}) {
-    const { requestHeaders = "" } = options;
+async function imageTransfer(imageBuffer, operationString) {
     let imageHandle = sharp(imageBuffer);
     let metadata = await logTime(
         async () => await imageHandle.metadata(),
@@ -78,19 +77,7 @@ async function imageTransfer(imageBuffer, operationString, options = {}) {
         } else if (actionName === "format") {
             const targetFormat = args.f;
             if (targetFormat === "auto") {
-                const requestAccept = requestHeaders["accept"];
-                if (requestAccept) {
-                    const acceptFormats = requestAccept
-                        .split(",")
-                        .map((item) => item.trim().split(";")[0]);
-                    if (acceptFormats.includes("image/webp")) {
-                        format = "webp";
-                    } else if (acceptFormats.includes("image/jpeg")) {
-                        format = "jpeg";
-                    } else if (acceptFormats.includes("image/png")) {
-                        format = "png";
-                    }
-                }
+                format = "webp";
             } else {
                 format = targetFormat;
             }

@@ -1,16 +1,26 @@
 const del = require("del");
-const { series, src, dest } = require("gulp");
+const { series, src, dest, parallel } = require("gulp");
 const zip = require("gulp-zip");
 const { exec } = require("child_process");
+const path = require("path");
+const fs = require("fs");
 
 function clean() {
-    return del(["dist/**/*"]);
+    return del(["dist/**/*", "dist/**/.*"]);
 }
 
-function copy() {
-    return src(["src/**/*", "package.json", "package-lock.json"]).pipe(
-        dest("dist/")
-    );
+function copy(cb) {
+    const envPath = path.resolve(__dirname, ".env.prod");
+    const defaultCopyAction = () =>
+        src(["src/**/*", "package.json", "package-lock.json"]).pipe(
+            dest("dist/")
+        );
+    if (fs.existsSync(envPath)) {
+        const copyEnv = () => src(envPath).pipe(dest("./dist"));
+        parallel(copyEnv, defaultCopyAction)(cb);
+    } else {
+        return defaultCopyAction();
+    }
 }
 
 function installNpm() {
@@ -28,7 +38,9 @@ function installNpm() {
 }
 
 function zipDist() {
-    return src("dist/**/*").pipe(zip("function.zip")).pipe(dest("./dist"));
+    return src(["dist/**/*", "dist/**/.*"])
+        .pipe(zip("function.zip"))
+        .pipe(dest("./dist"));
 }
 
 function end(cb) {

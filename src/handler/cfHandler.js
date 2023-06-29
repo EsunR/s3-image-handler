@@ -1,11 +1,12 @@
-const {
-    GetObjectCommand,
-    PutObjectCommand,
-    S3Client,
-} = require("@aws-sdk/client-s3");
+const { GetObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
 const { errorResponse: _errorResponse } = require("../utils/response");
 const { imageTransfer } = require("../utils/image");
 const { IMAGE_OPERATION_SPLIT } = require("../utils/constance");
+const {
+    transformCfEventRequestHeaders,
+    logTime,
+    requestHeadersKey2LowerCase,
+} = require("../utils");
 
 const { BUCKET } = process.env;
 
@@ -18,6 +19,40 @@ const { BUCKET } = process.env;
 async function cfHandler(event, s3Client) {
     const cfEvent = event.Records[0].cf;
     const response = cfEvent.response;
+    const requestHeaders = requestHeadersKey2LowerCase(
+        transformCfEventRequestHeaders(cfEvent.request.headers)
+    );
+    // 请求的文件 key
+    let queryFileKey = cfEvent.request.uri;
+    if (queryFileKey.startsWith("/")) {
+        queryFileKey = queryFileKey.slice(1);
+    }
+    const isSupportWebp = requestHeaders.accept?.includes("webp");
+    const isReuqestAutoResource = queryFileKey.includes("__op__format,f_auto");
+    // 如果请求的是 auto 资源，但是不支持 webp，则重定向到原始资源
+    if (!isSupportWebp && isReuqestAutoResource) {
+        response.status = "307";
+        response.statusDescription = "Temporary Redirect";
+        response.headers["location"] = [
+            {
+                key: "Location",
+                value: cfEvent.request.uri.replace("__op__format,f_auto", ""),
+            },
+        ];
+        response.headers["lambda-edge"] = [
+            {
+                key: "Lambda-Edge",
+                value: "redirect-unsupported-webp",
+            },
+        ];
+        response.headers["cache-control"] = [
+            {
+                key: "Cache-Control",
+                value: "no-cache, no-store, must-revalidate",
+            },
+        ];
+        return response;
+    }
     const errorResponse = async (body, statusCode = 400) => {
         return await _errorResponse(body, statusCode, {
             eventType: "cf",
@@ -35,11 +70,7 @@ async function cfHandler(event, s3Client) {
         return response;
     }
     // 获取查询的文件
-    let query = cfEvent.request.uri;
-    if (query.startsWith("/")) {
-        query = query.slice(1);
-    }
-    const fileName = query.split("/")[query.split("/").length - 1];
+    const fileName = queryFileKey.split("/")[queryFileKey.split("/").length - 1];
     if (!fileName) {
         return errorResponse("Missing file name");
     }
@@ -52,7 +83,7 @@ async function cfHandler(event, s3Client) {
     console.log("operationString: ", operationString);
     const originFileName = fileName.split(IMAGE_OPERATION_SPLIT)[0];
     console.log("originFileName: ", originFileName);
-    const originFilePath = query.split(fileName)[0] + originFileName;
+    const originFilePath = queryFileKey.split(fileName)[0] + originFileName;
     console.log("originFilePath: ", originFilePath);
 
     try {
@@ -73,18 +104,22 @@ async function cfHandler(event, s3Client) {
             });
         console.log("Transform time: ", Date.now() - transStart, "ms");
 
-        s3Client.send(
-            new PutObjectCommand({
-                Bucket: BUCKET,
-                Key: query,
-                Body: transformedImageBuffer,
-                ContentType: contentType,
-            })
-        );
+        await logTime(async () => {
+            await s3Client.send(
+                new PutObjectCommand({
+                    Bucket: BUCKET,
+                    Key: queryFileKey,
+                    Body: transformedImageBuffer,
+                    ContentType: contentType,
+                })
+            );
+        }, "Upload time");
 
+        // 直接复用图片处理结果
         response.status = "200";
         response.statusDescription = "OK";
-        response.body = transformedImageBuffer;
+        response.body = transformedImageBuffer.toString("base64");
+        response.bodyEncoding = "base64";
         response.headers["content-type"] = [
             {
                 key: "Content-Type",
@@ -101,6 +136,13 @@ async function cfHandler(event, s3Client) {
             {
                 key: "Lambda-Edge",
                 value: "success",
+            },
+        ];
+        // 这次请求不让 CloudFront 缓存
+        response.headers["cache-control"] = [
+            {
+                key: "Cache-Control",
+                value: "no-cache, no-store, must-revalidate",
             },
         ];
         return response;
