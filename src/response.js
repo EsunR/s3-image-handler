@@ -30,7 +30,7 @@ const s3Client = new S3Client(
 
 exports.handler = async (event) => {
     console.log(
-        "Reading options from event:\n",
+        "Response event:\n",
         util.inspect(event, { depth: 8 })
     );
     const eventMode = event?.Records instanceof Array ? "cf" : "api";

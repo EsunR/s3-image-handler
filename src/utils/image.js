@@ -74,7 +74,9 @@ async function imageTransfer(imageBuffer, operationString) {
             imageHandle = resizeImage(imageHandle, args);
         } else if (actionName === "quality") {
             quality = Number(args.q);
-        } else if (actionName === "format") {
+        } 
+        // 注意：如果格式是 auto 会恒定转换为 webp，webp 回落交给 request.handler 处理
+        else if (actionName === "format") {
             const targetFormat = args.f;
             if (targetFormat === "auto") {
                 format = "webp";

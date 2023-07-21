@@ -42,3 +42,5 @@
 # 3. 参考文档
 
 - [使用 Amazon S3 触发器创建缩略图](https://docs.aws.amazon.com/zh_cn/lambda/latest/dg/with-s3-tutorial.html)
+- [Customizing at the edge with Lambda@Edge](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-at-the-edge.html)
+- 

@@ -27,32 +27,6 @@ async function cfHandler(event, s3Client) {
     if (queryFileKey.startsWith("/")) {
         queryFileKey = queryFileKey.slice(1);
     }
-    const isSupportWebp = requestHeaders.accept?.includes("webp");
-    const isReuqestAutoResource = queryFileKey.includes("__op__format,f_auto");
-    // 如果请求的是 auto 资源，但是不支持 webp，则重定向到原始资源
-    if (!isSupportWebp && isReuqestAutoResource) {
-        response.status = "307";
-        response.statusDescription = "Temporary Redirect";
-        response.headers["location"] = [
-            {
-                key: "Location",
-                value: cfEvent.request.uri.replace("__op__format,f_auto", ""),
-            },
-        ];
-        response.headers["lambda-edge"] = [
-            {
-                key: "Lambda-Edge",
-                value: "redirect-unsupported-webp",
-            },
-        ];
-        response.headers["cache-control"] = [
-            {
-                key: "Cache-Control",
-                value: "no-cache, no-store, must-revalidate",
-            },
-        ];
-        return response;
-    }
     const errorResponse = async (body, statusCode = 400) => {
         return await _errorResponse(body, statusCode, {
             eventType: "cf",
