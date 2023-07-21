@@ -1,13 +1,13 @@
-const sharp = require("sharp");
-const { validImageAction, isNumberString } = require("./validator");
-const { IMAGE_OPERATION_SPLIT } = require("./constance");
-const { logTime } = require(".");
+import sharp, { Sharp } from "sharp";
+import { validImageAction, isNumberString } from "./validator";
+import { IMAGE_OPERATION_SPLIT } from "./constance";
+import { logTime } from ".";
+import { ImageAction, ResizeImageAction } from "../types";
 
 /**
  * 解析操作字符串
- * @param {string} argString
  */
-function parseOperationString(argString) {
+function parseOperationString(argString: string) {
     const actionsString = argString
         .split(IMAGE_OPERATION_SPLIT)
         .filter((item) => !!item);
@@ -17,11 +17,11 @@ function parseOperationString(argString) {
         const action = {
             actionName,
             args: {},
-        };
+        } as ImageAction;
         args.forEach((arg) => {
             const argKey = arg.split("_")[0];
             const argValue = arg.split("_")[1].trim();
-            action.args[argKey] = argValue;
+            Object.assign(action.args, { [argKey]: argValue });
         });
         validImageAction(action);
         result.push(action);
@@ -31,26 +31,24 @@ function parseOperationString(argString) {
 
 /**
  * 裁剪图片
- * @param {sharp.Sharp} imageHandle
- * @param {Object} args
  */
-function resizeImage(imageHandle, args) {
-    let { m, w, h, limit = "0" } = args;
-    w = isNumberString(w) ? Number(w) : w;
-    h = isNumberString(h) ? Number(h) : h;
+function resizeImage(imageHandle: Sharp, args: ResizeImageAction["args"]) {
+    const { m, w, h, limit = "0" } = args;
+    const numW = isNumberString(w) ? Number(w) : undefined;
+    const numH = isNumberString(h) ? Number(h) : undefined;
     if (m === "lfit") {
-        if (!w && !h) {
+        if (!numW && !numH) {
             throw new Error(`Missing required argument: w or h`);
         }
-        return imageHandle.resize(w, h, {
+        return imageHandle.resize(numW, numH, {
             fit: "outside",
             withoutEnlargement: limit === "1",
         });
     } else if (m === "mfit") {
-        if (!w && !h) {
+        if (!numW && !numH) {
             throw new Error(`Missing required argument: w or h`);
         }
-        return imageHandle.resize(w, h, {
+        return imageHandle.resize(numW, numH, {
             fit: "inside",
             withoutEnlargement: limit === "1",
         });
@@ -59,11 +57,14 @@ function resizeImage(imageHandle, args) {
     }
 }
 
-async function imageTransfer(imageBuffer, operationString) {
+export async function imageTransfer(
+    imageBuffer: Uint8Array,
+    operationString: string,
+) {
     let imageHandle = sharp(imageBuffer);
-    let metadata = await logTime(
+    const metadata = await logTime(
         async () => await imageHandle.metadata(),
-        "Read metadata before transform"
+        "Read metadata before transform",
     );
     const actions = parseOperationString(operationString);
     let quality = 0;
@@ -74,7 +75,7 @@ async function imageTransfer(imageBuffer, operationString) {
             imageHandle = resizeImage(imageHandle, args);
         } else if (actionName === "quality") {
             quality = Number(args.q);
-        } 
+        }
         // 注意：如果格式是 auto 会恒定转换为 webp，webp 回落交给 request.handler 处理
         else if (actionName === "format") {
             const targetFormat = args.f;
@@ -92,9 +93,9 @@ async function imageTransfer(imageBuffer, operationString) {
         actions.map((item) => item.actionName).includes("quality")
     ) {
         imageHandle = await logTime(
-            () =>
+            async () =>
                 imageHandle.toFormat(format, { quality: quality || undefined }),
-            "Transform format and quantity"
+            "Transform format and quantity",
         );
     }
     return {
@@ -102,7 +103,3 @@ async function imageTransfer(imageBuffer, operationString) {
         contentType: `image/${format}`,
     };
 }
-
-module.exports = {
-    imageTransfer,
-};

@@ -1,0 +1,14 @@
+{
+  "name": "@s3-image-handler/viewer-request",
+  "private": true,
+  "description": "",
+  "scripts": {
+    "dev": "ts-node index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.3.1"
+  }
+}

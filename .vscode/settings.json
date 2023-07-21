@@ -1,4 +1,5 @@
 {
     "editor.tabSize": 4,
-    "javascript.suggestionActions.enabled": false
+    "javascript.suggestionActions.enabled": false,
+    "typescript.tsdk": "node_modules/typescript/lib"
 }

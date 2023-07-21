@@ -1,36 +1,37 @@
-const { GetObjectCommand, PutObjectCommand } = require("@aws-sdk/client-s3");
-const { errorResponse: _errorResponse } = require("../utils/response");
-const { imageTransfer } = require("../utils/image");
-const { IMAGE_OPERATION_SPLIT } = require("../utils/constance");
-const {
-    transformCfEventRequestHeaders,
-    logTime,
-    requestHeadersKey2LowerCase,
-} = require("../utils");
+import {
+    GetObjectCommand,
+    PutObjectCommand,
+    S3Client,
+} from "@aws-sdk/client-s3";
+import { loadEnv, logTime } from "../utils";
+import { IMAGE_OPERATION_SPLIT } from "../utils/constance";
+import { imageTransfer } from "../utils/image";
+import { errorResponse as _errorResponse } from "../utils/response";
 
-const { BUCKET } = process.env;
+const { BUCKET } = loadEnv();
 
 /**
  * CloudFront event handler
- * @param {Object} event
- * @param {S3Client} s3Client
- * @returns
  */
-async function cfHandler(event, s3Client) {
+export default async function cfHandler(
+    event: CfOriginResponseEvent,
+    s3Client: S3Client,
+) {
     const cfEvent = event.Records[0].cf;
     const response = cfEvent.response;
-    const requestHeaders = requestHeadersKey2LowerCase(
-        transformCfEventRequestHeaders(cfEvent.request.headers)
-    );
+    // const requestHeaders = requestHeadersKey2LowerCase(
+    //     transformCfEventRequestHeaders(cfEvent.request.headers),
+    // );
     // 请求的文件 key
     let queryFileKey = cfEvent.request.uri;
     if (queryFileKey.startsWith("/")) {
         queryFileKey = queryFileKey.slice(1);
     }
-    const errorResponse = async (body, statusCode = 400) => {
-        return await _errorResponse(body, statusCode, {
-            eventType: "cf",
+    const errorResponse = (body: string, statusCode: number = 400) => {
+        return _errorResponse({
+            body,
             response,
+            statusCode,
         });
     };
     // 如果能够正确处理资源，则正常返回数据
@@ -44,7 +45,8 @@ async function cfHandler(event, s3Client) {
         return response;
     }
     // 获取查询的文件
-    const fileName = queryFileKey.split("/")[queryFileKey.split("/").length - 1];
+    const fileName =
+        queryFileKey.split("/")[queryFileKey.split("/").length - 1];
     if (!fileName) {
         return errorResponse("Missing file name");
     }
@@ -52,7 +54,7 @@ async function cfHandler(event, s3Client) {
         return errorResponse("Missing image operation");
     }
     const operationString = fileName.slice(
-        fileName.match(new RegExp(IMAGE_OPERATION_SPLIT)).index
+        fileName.match(new RegExp(IMAGE_OPERATION_SPLIT))?.index,
     );
     console.log("operationString: ", operationString);
     const originFileName = fileName.split(IMAGE_OPERATION_SPLIT)[0];
@@ -66,16 +68,18 @@ async function cfHandler(event, s3Client) {
             new GetObjectCommand({
                 Bucket: BUCKET,
                 Key: originFilePath,
-            })
+            }),
         );
-        const imageBuffer = await originImage.Body.transformToByteArray();
+        const imageBuffer = await originImage.Body?.transformToByteArray();
         console.log("Download time: ", Date.now() - downloadStart, "ms");
+
+        if (!imageBuffer) {
+            throw new Error("Image buffer is empty");
+        }
 
         const transStart = Date.now();
         const { buffer: transformedImageBuffer, contentType } =
-            await imageTransfer(imageBuffer, operationString, {
-                requestHeaders,
-            });
+            await imageTransfer(imageBuffer, operationString);
         console.log("Transform time: ", Date.now() - transStart, "ms");
 
         await logTime(async () => {
@@ -85,7 +89,7 @@ async function cfHandler(event, s3Client) {
                     Key: queryFileKey,
                     Body: transformedImageBuffer,
                     ContentType: contentType,
-                })
+                }),
             );
         }, "Upload time");
 
@@ -120,9 +124,9 @@ async function cfHandler(event, s3Client) {
             },
         ];
         return response;
-    } catch (e) {
+    } catch (e: any) {
         console.log("Exception:\n", e);
-        return errorResponse("Exception: " + e.message, e.statusCode || 400);
+        return errorResponse("Exception: " + e?.message, e?.statusCode || 400);
     }
 }
 
