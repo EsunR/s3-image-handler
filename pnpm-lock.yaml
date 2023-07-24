@@ -94,17 +94,7 @@ importers:
         specifier: ^16.3.1
         version: 16.3.1
 
-  packages/viewer-request:
-    dependencies:
-      dotenv:
-        specifier: ^16.3.1
-        version: 16.3.1
-
-  publish:
-    dependencies:
-      dotenv:
-        specifier: ^16.3.1
-        version: 16.3.1
+  packages/viewer-request: {}
 
 packages:
 

@@ -21,6 +21,9 @@ type CfResponse = {
     bodyEncoding: string;
 };
 
+/**
+ * https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-event-structure.html#lambda-event-structure-response
+ */
 interface CfOriginResponseEvent {
     Records: Array<{
         cf: {
@@ -32,6 +35,23 @@ interface CfOriginResponseEvent {
             };
             request: CfRequest;
             response: CfResponse;
+        };
+    }>;
+}
+
+/**
+ * https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-event-structure.html#lambda-event-structure-request
+ */
+interface CfViewerRequestEvent {
+    Records: Array<{
+        cf: {
+            config: {
+                distributionDomainName: string;
+                distributionId: string;
+                eventType: string;
+                requestId: string;
+            };
+            request: CfRequest;
         };
     }>;
 }
