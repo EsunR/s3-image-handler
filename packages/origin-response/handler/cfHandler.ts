@@ -129,5 +129,3 @@ export default async function cfHandler(
         return errorResponse("Exception: " + e?.message, e?.statusCode || 400);
     }
 }
-
-module.exports = cfHandler;

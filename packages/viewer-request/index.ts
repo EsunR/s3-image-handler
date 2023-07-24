@@ -9,6 +9,7 @@ export async function handler(event: CfViewerRequestEvent) {
         !!request.headers?.["accept"][0].value.includes("image/webp");
     // 如果不支持 webp 但是要求自动转换格式，就把请求中的 f_auto 去掉
     if (!isSupportWebp && requestAutoFormat) {
+        console.log('Not support webp, remove "f_auto" from uri');
         request.uri = uri.replace("__op__format,f_auto", "");
     }
     return request;

@@ -1,7 +1,5 @@
 runtime="nodejs18.x"
-timeout=10
-memory_size=1024
-role_arn="arn:aws:iam::$AWS_ACCOUNT_ID:role/Lambda_S3ImageReize"
+role_arn="arn:aws:iam::$AWS_ACCOUNT_ID:role/Lambda_S3ImageHandler"
 fucntion_hander="index.handler"
 
 aws lambda create-function \
@@ -9,8 +7,8 @@ aws lambda create-function \
     --zip-file fileb://dist/origin-response.zip \
     --handler $fucntion_hander \
     --runtime $runtime \
-    --timeout $timeout \
-    --memory-size $memory_size \
+    --timeout 10 \
+    --memory-size 1024 \
     --role $role_arn
 
 aws lambda create-function \
@@ -18,6 +16,6 @@ aws lambda create-function \
     --zip-file fileb://dist/viewer-request.zip \
     --handler $fucntion_hander \
     --runtime $runtime \
-    --timeout $timeout \
-    --memory-size $memory_size \
+    --timeout 5 \
+    --memory-size 128 \
     --role $role_arn
