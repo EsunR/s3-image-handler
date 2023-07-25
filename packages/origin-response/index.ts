@@ -16,7 +16,10 @@ const s3Client = new S3Client(
               region: REGION,
               endpoint: ENDPOINT,
           }
-        : {},
+        : {
+              region: REGION,
+              endpoint: ENDPOINT,
+          },
 );
 
 export async function handler(event: CfOriginResponseEvent) {

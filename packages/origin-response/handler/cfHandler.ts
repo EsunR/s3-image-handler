@@ -19,9 +19,6 @@ export default async function cfHandler(
 ) {
     const cfEvent = event.Records[0].cf;
     const response = cfEvent.response;
-    // const requestHeaders = requestHeadersKey2LowerCase(
-    //     transformCfEventRequestHeaders(cfEvent.request.headers),
-    // );
     // 请求的文件 key
     let queryFileKey = cfEvent.request.uri;
     if (queryFileKey.startsWith("/")) {
@@ -62,8 +59,8 @@ export default async function cfHandler(
     const originFilePath = queryFileKey.split(fileName)[0] + originFileName;
     console.log("originFilePath: ", originFilePath);
 
+    const downloadStartTime = Date.now();
     try {
-        const downloadStart = Date.now();
         const originImage = await s3Client.send(
             new GetObjectCommand({
                 Bucket: BUCKET,
@@ -71,16 +68,16 @@ export default async function cfHandler(
             }),
         );
         const imageBuffer = await originImage.Body?.transformToByteArray();
-        console.log("Download time: ", Date.now() - downloadStart, "ms");
+        console.log("Download time: ", Date.now() - downloadStartTime, "ms");
 
         if (!imageBuffer) {
             throw new Error("Image buffer is empty");
         }
 
-        const transStart = Date.now();
+        const transStartTime = Date.now();
         const { buffer: transformedImageBuffer, contentType } =
             await imageTransfer(imageBuffer, operationString);
-        console.log("Transform time: ", Date.now() - transStart, "ms");
+        console.log("Transform time: ", Date.now() - transStartTime, "ms");
 
         await logTime(async () => {
             await s3Client.send(
@@ -125,7 +122,8 @@ export default async function cfHandler(
         ];
         return response;
     } catch (e: any) {
-        console.log("Exception:\n", e);
-        return errorResponse("Exception: " + e?.message, e?.statusCode || 400);
+        console.log("Download time: ", Date.now() - downloadStartTime, "ms");
+        console.log("Image handler exception:\n", e);
+        return errorResponse("File not exist", e?.statusCode || 404);
     }
 }

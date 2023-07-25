@@ -2,13 +2,17 @@
 
 本项目利用 Lambda@Edge 函数实现了对 S3 图片进行图像处理的操作，有以下特点：
 
--   处理后的图片会自动上传到 S3 提供副本；
+-   处理后的图片会自动上传到 S3 提供副本，下次请求直接获取 S3 资源；
 -   支持 CloudFront 的图片缓存；
--   使用 Lambda@Edge 进行部署，函数被部署到全球边缘节点，加快函数执行效率；
--   使用 sharp 实现了图缩放、质量调整、格式调整等
--   支持图片格式自动择优使用 webp 格式
+-   使用 Lambda@Edge 进行部署，Lambda 函数被部署到全球边缘节点，加快函数执行速度；
+-   使用 sharp 实现了图缩放、质量调整、格式调整等；
+-   支持图片格式自动择优使用 webp 格式。
 
 # 1. 部署流程
+
+### 创建 Bucket 并为其创建 CloudFront 分配
+
+[详细教程](https://blog.esunr.xyz/2023/07/cd2440f9b860.html)
 
 ### 配置角色
 
@@ -46,6 +50,7 @@
 
 ```
 BUCKET=your-bucket-name
+BUCKET=your-bucket-region
 ```
 
 ### 构建文件
@@ -86,13 +91,51 @@ export AWS_ACCOUNT_ID=your-account-id && sh ./publish.sh
 
 Lambda 函数上传完成后需要部署到 Lambda@Edge 上才能生效。
 
-首先部署 S3ImageHandler_ViewerRequest 到 ViewerRequest 上，点击 S3ImageHandler_ViewerRequest 函数，点击右上角 `操作 - 部署到 Lambda@Edge`：
+首先部署 S3ImageHandler_ViewerRequest 到 ViewerRequest 上，点击 S3ImageHandler_ViewerRequest 函数进入详情，点击右上角 `操作 - 部署到 Lambda@Edge`：
 
 ![](https://s2.loli.net/2023/07/24/PoKZecAyvf6h8Ir.png)
 
 选择 CloudFront 触发器，分配到目标 Bucket 所分配的 CloudFront 上，CloudFront 事件选择为 `查看者请求(Viewer Request)`，如下图：
 
-![](https://s2.loli.net/2023/07/24/VgQEtM5kBGOl3ca.png)
+![](https://s2.loli.net/2023/07/25/ZsCEkQVa4GhuRAN.png)
+
+点击部署后，S3ImageHandler_ViewerRequest 部署完成。
+
+然后点击 S3ImageHandler_OriginResponse 函数进入详情，同样的，点击右上角 `操作 - 部署到 Lambda@Edge`。选择 CloudFront 触发器，分配到目标 Bucket 所分配的 CloudFront 上，CloudFront 事件选择为 `源响应(Origin Response)`，如下图：
+
+![](https://s2.loli.net/2023/07/25/YTBq6Jr2xaQH8DN.png)
+
+点击部署后，S3ImageHandler_OriginResponse 部署完成。
+
+### 验证
+
+验证是否成功部署到边缘节点，可以进入到 CloudFront 控制台，点击 S3 Bucket 所绑定的 CloudFront 分配，进入 `行为` 面板，勾选默行为并点击 `编辑` 按钮：
+
+![](https://s2.loli.net/2023/07/25/E8fFPQDhvTXRBec.png)
+
+滑动到最下方，查看函数关联部分，确认 `查看器请求` 和 `源响应请求` 绑定的函数正确：
+
+![](https://esunr-image-bed.oss-cn-beijing.aliyuncs.com/picgo/202307251127868.png)
+
+然后使用 CloudFront 分配的域名，或者使用用户绑定的备用域名访问图片查看是否可以正常请求到图片，查看请求资源的响应头是否存在 `Lambda-Edge` 字段，如果是 `not-modify` 说明用户当前访问的是 S3 存在的资源，Lambda 函数不修改图片直接返回：
+
+![](https://esunr-image-bed.oss-cn-beijing.aliyuncs.com/picgo/202307251134027.png)
+
+如果当携带请求参数（详情看下一章节的调用方式），如 `/image.jpeg__op__resize,w_720__op__format,f_auto`(将图片宽度设置为 720，图片格式自动选择)，那么 `Lambda-Edge` 将为 `successful`，如下：
+
+![](https://esunr-image-bed.oss-cn-beijing.aliyuncs.com/picgo/202307251259307.png)
+
+### 错误排查
+
+如果出现了访问错误的问题，可以进入 [CloudWatch 控制台](https://console.aws.amazon.com/cloudwatch/home)，选择日志组面板，会看到如下的日志组，点击即可查看详细的日志信息：
+
+![](https://esunr-image-bed.oss-cn-beijing.aliyuncs.com/picgo/202307251457933.png)
+
+> 注意：如果显示没有日志组说明当前右上角选中的地区的 CloudFront 分配并没有命中，手动切换到一个有命中 CloudFront 分配的地区，比如在中国访问，那么切换到香港或者日本、韩国就可以看到访问日志。
+
+如果代码有调整需要重新部署，代码编译后执行 `sh ./update.sh` 脚本即可将代码更新到 Lambda。然后到进入到对应的 Lambda 函数详情，点击 `操作 - 部署到 Lambda@Edge`，选择 `对此函数使用现有的 CloudFront 触发器` 然后选中之前部署的触发器即可更新：
+
+![](https://esunr-image-bed.oss-cn-beijing.aliyuncs.com/picgo/202307251505018.png)
 
 # 2. 调用方式
 
@@ -126,7 +169,7 @@ Lambda 函数上传完成后需要部署到 Lambda@Edge 上才能生效。
 
 # 3. 缺陷
 
--   Webp 不支持自动回落；
+-   ~~Webp 不支持自动回落~~；[Resolved]
     -   待验证：目前来说，如果是用 f_auto，服务端会生成一张 webp 格式的图片放置到 s3 上，但是当使用不支持 webp 的浏览器访问时，无法自动回落到原始格式。后期尝试是否可以通过 lambda@edge 的请求源函数来直接修改请求 uri，从而让用户获取回落格式的资源。
     -   待验证：Cloudfront 会缓存请求资源如何处理？
 -   大文图片处理速度慢，有可能会卡死（基本无法处理10M以上的图片）；

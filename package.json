@@ -7,9 +7,8 @@
   "packageManager": "pnpm@8.6.6",
   "scripts": {
     "build": "pnpm -F @s3-image-handler/build start",
-    "test": "cross-env NODE_ENV=development node ./test.js",
-    "publish": "sh ./publish.sh",
-    "update": "sh ./update.sh"
+    "lambda:publish": "sh ./publish.sh",
+    "lambda:update": "sh ./update.sh"
   },
   "author": "",
   "license": "ISC",
