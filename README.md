@@ -83,6 +83,8 @@ pnpm build
 export AWS_ACCOUNT_ID=your-account-id && sh ./publish.sh
 ```
 
+> 如果出现文本编辑器，退出文本编辑器即可（如出现 vim 就输入 q 点回车），不要直接 ctrl+c 结束脚本
+
 然后进入 Lambda 函数控制面板，地区选择 `美国东部(弗吉尼亚北部) us-east-1`，可以看到成功上传的两个函数：
 
 ![](https://s2.loli.net/2023/07/24/4q9HOMTtBsepiIC.png)

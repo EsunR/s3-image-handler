@@ -18,7 +18,6 @@ const s3Client = new S3Client(
           }
         : {
               region: REGION,
-              endpoint: ENDPOINT,
           },
 );
 
