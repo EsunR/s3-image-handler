@@ -1,33 +1,33 @@
 import {
-    isImageOpUri,
+    uriWithOpString,
     getUriOpString,
     decodeImageOpString,
     encodeImageOpString,
 } from "@/common/utils";
 
-describe("isImageOpUri", () => {
+describe("uriWithOpString", () => {
     test("is image op uri", () => {
-        expect(isImageOpUri("test.png__op__format,f_auto")).toBe(true);
+        expect(uriWithOpString("test.png__op__format,f_auto")).toBe(true);
     });
 
     test("is not image op uri", () => {
-        expect(isImageOpUri("test.png")).toBe(false);
+        expect(uriWithOpString("test.png")).toBe(false);
     });
 });
 
 describe("getUriOpString", () => {
     test("get uri op string successful", () => {
-        expect(getUriOpString("test.png__op__format,f_auto")).toBe(
+        expect(getUriOpString("/test.png__op__format,f_auto")).toBe(
             "__op__format,f_auto",
         );
     });
 
     test("without uri op string", () => {
-        expect(getUriOpString("test.png")).toBe("");
+        expect(getUriOpString("/test.png")).toBe("");
     });
 
     test("get uri op string with url query", () => {
-        expect(getUriOpString("test.png?query=__op__format,f_auto")).toBe("");
+        expect(getUriOpString("/test.png?query=__op__format,f_auto")).toBe("");
     });
 });
 

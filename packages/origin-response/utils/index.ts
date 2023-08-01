@@ -30,7 +30,7 @@ export function loadEnv() {
         path:
             process.env.NODE_ENV === "test"
                 ? path.resolve(__dirname, "../.evn.test")
-                : path.resolve(__dirname, "../.env"),
+                : path.resolve(__dirname, ".env"),
     });
     return process.env;
 }

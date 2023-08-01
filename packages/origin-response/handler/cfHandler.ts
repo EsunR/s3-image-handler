@@ -1,12 +1,12 @@
+import { IMAGE_OPERATION_SPLIT } from "@/common/constance";
 import {
     GetObjectCommand,
     PutObjectCommand,
     S3Client,
 } from "@aws-sdk/client-s3";
-import { loadEnv, logTime } from "../utils";
+import { loadEnv } from "../utils";
 import { imageTransfer } from "../utils/image";
 import { errorResponse as _errorResponse } from "../utils/response";
-import { IMAGE_OPERATION_SPLIT } from "@/common/constance";
 
 const { BUCKET } = loadEnv();
 
@@ -79,16 +79,14 @@ export default async function cfHandler(
             await imageTransfer(imageBuffer, operationString);
         console.log("Transform time: ", Date.now() - transStartTime, "ms");
 
-        await logTime(async () => {
-            await s3Client.send(
-                new PutObjectCommand({
-                    Bucket: BUCKET,
-                    Key: queryFileKey,
-                    Body: transformedImageBuffer,
-                    ContentType: contentType,
-                }),
-            );
-        }, "Upload time");
+        s3Client.send(
+            new PutObjectCommand({
+                Bucket: BUCKET,
+                Key: queryFileKey,
+                Body: transformedImageBuffer,
+                ContentType: contentType,
+            }),
+        );
 
         // 直接复用图片处理结果
         response.status = "200";

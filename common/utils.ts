@@ -2,21 +2,29 @@ import { IMAGE_OPERATION_SORT, IMAGE_OPERATION_SPLIT } from "./constance";
 
 type ImageOpRecord = Record<string, Record<string, any>>;
 
-export function isImageOpUri(uri: string) {
+/**
+ * uri 中是否包含 __op__ 字符串
+ */
+export function uriWithOpString(uri: string) {
     debugger;
     return uri.includes(IMAGE_OPERATION_SPLIT);
 }
 
+// export function parseUri(uri: string) {
+//     const fileKey = uri.startsWith("/") ? uri.slice(1) : uri;
+//     const splitUri = fileKey.split("/");
+// }
+
 export function getUriOpString(uri: string) {
-    debugger;
     const splitUri = uri.split("/");
-    const fileKey = splitUri[splitUri.length - 1].split("?")[0];
-    const opStringStartIndex = fileKey.match(new RegExp(IMAGE_OPERATION_SPLIT))
-        ?.index;
+    const fileNameWithOpString = splitUri[splitUri.length - 1].split("?")[0];
+    const opStringStartIndex = fileNameWithOpString.match(
+        new RegExp(IMAGE_OPERATION_SPLIT),
+    )?.index;
     if (opStringStartIndex === undefined) {
         return "";
     }
-    const operationString = fileKey.slice(opStringStartIndex);
+    const operationString = fileNameWithOpString.slice(opStringStartIndex);
     return operationString;
 }
 

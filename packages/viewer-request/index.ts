@@ -2,19 +2,19 @@ import {
     decodeImageOpString,
     encodeImageOpString,
     getUriOpString,
-    isImageOpUri,
+    uriWithOpString,
 } from "@/common/utils";
 import util from "util";
 
 export async function handler(event: CfViewerRequestEvent) {
-    if (typeof jest == undefined) {
-        console.log("Response event:\n", util.inspect(event, { depth: 8 }));
-    }
     const request = event.Records[0].cf.request;
-
     // 判断是否是有效 uri
-    if (!isImageOpUri(request.uri)) {
+    if (!uriWithOpString(request.uri)) {
         return request;
+    }
+
+    if (typeof jest === "undefined") {
+        console.log("Response event:\n", util.inspect(event, { depth: 8 }));
     }
 
     // 判断是否需要自动转换格式
@@ -37,7 +37,7 @@ export async function handler(event: CfViewerRequestEvent) {
     }
 
     // 判断是否还包含 image op 字符串
-    if (!isImageOpUri(request.uri)) {
+    if (!uriWithOpString(request.uri)) {
         return request;
     }
 
