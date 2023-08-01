@@ -8,15 +8,15 @@ export function isImageOpUri(uri: string) {
 }
 
 export function getUriOpString(uri: string) {
-    let queryFileKey = uri;
-    if (queryFileKey.startsWith("/")) {
-        queryFileKey = queryFileKey.slice(1);
+    debugger;
+    const splitUri = uri.split("/");
+    const fileKey = splitUri[splitUri.length - 1].split("?")[0];
+    const opStringStartIndex = fileKey.match(new RegExp(IMAGE_OPERATION_SPLIT))
+        ?.index;
+    if (opStringStartIndex === undefined) {
+        return "";
     }
-    const fileName =
-        queryFileKey.split("/")[queryFileKey.split("/").length - 1];
-    const operationString = fileName.slice(
-        fileName.match(new RegExp(IMAGE_OPERATION_SPLIT))?.index,
-    );
+    const operationString = fileKey.slice(opStringStartIndex);
     return operationString;
 }
 
@@ -42,11 +42,11 @@ export function encodeImageOpString(imageOpRecord: ImageOpRecord) {
     IMAGE_OPERATION_SORT.forEach((opSort) => {
         const { op, args } = opSort;
         if (imageOpRecord[op]) {
-            result += `${IMAGE_OPERATION_SPLIT}${op},`;
+            result += `${IMAGE_OPERATION_SPLIT}${op}`;
             // 此处会过滤掉无用参数
             args.forEach((arg) => {
                 if (imageOpRecord[op][arg] !== undefined) {
-                    result += `${arg}_${imageOpRecord[op][arg]},`;
+                    result += `,${arg}_${imageOpRecord[op][arg]}`;
                 }
             });
         }
