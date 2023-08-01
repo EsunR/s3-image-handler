@@ -9,15 +9,19 @@
     "build": "gulp -f ./build/gulpfile.ts",
     "lambda:publish": "sh ./publish.sh",
     "lambda:update": "sh ./update.sh",
-    "clean:node_modules": "find . -name \"node_modules\" -type d -exec rm -rf '{}' +"
+    "clean:node_modules": "find . -name \"node_modules\" -type d -exec rm -rf '{}' +",
+    "test:viewer-request": "ts-node -r tsconfig-paths/register ./test/viewer-request.ts",
+    "test": "jest --config ./jest.config.js"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@rollup/plugin-alias": "^5.0.0",
     "@rollup/plugin-commonjs": "^25.0.3",
     "@rollup/plugin-node-resolve": "^15.1.0",
     "@types/gulp": "^4.0.13",
     "@types/gulp-zip": "^4.0.2",
+    "@types/jest": "^29.5.3",
     "@types/node": "^20.3.1",
     "@typescript-eslint/eslint-plugin": "^6.1.0",
     "@typescript-eslint/parser": "^6.1.0",
@@ -30,10 +34,13 @@
     "fast-glob": "^3.3.1",
     "gulp": "^4.0.2",
     "gulp-zip": "^5.1.0",
+    "jest": "^29.6.2",
     "prettier": "^3.0.0",
     "rollup": "^3.27.0",
     "rollup-plugin-esbuild": "^5.0.0",
+    "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.1.6"
   },
   "volta": {

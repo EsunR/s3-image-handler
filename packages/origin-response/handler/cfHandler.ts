@@ -4,9 +4,9 @@ import {
     S3Client,
 } from "@aws-sdk/client-s3";
 import { loadEnv, logTime } from "../utils";
-import { IMAGE_OPERATION_SPLIT } from "../utils/constance";
 import { imageTransfer } from "../utils/image";
 import { errorResponse as _errorResponse } from "../utils/response";
+import { IMAGE_OPERATION_SPLIT } from "@/common/constance";
 
 const { BUCKET } = loadEnv();
 
@@ -19,6 +19,16 @@ export default async function cfHandler(
 ) {
     const cfEvent = event.Records[0].cf;
     const response = cfEvent.response;
+    // 如果能够正确处理资源，或者请求的数据没有图片操作符，则正常返回数据
+    if (response.status !== "403" || !cfEvent.request.uri.includes("__op__")) {
+        response.headers["lambda-edge"] = [
+            {
+                key: "Lambda-Edge",
+                value: "nothing-hanppened",
+            },
+        ];
+        return response;
+    }
     // 请求的文件 key
     let queryFileKey = cfEvent.request.uri;
     if (queryFileKey.startsWith("/")) {
@@ -31,16 +41,6 @@ export default async function cfHandler(
             statusCode,
         });
     };
-    // 如果能够正确处理资源，则正常返回数据
-    if (response.status !== "403") {
-        response.headers["lambda-edge"] = [
-            {
-                key: "Lambda-Edge",
-                value: "not-modified",
-            },
-        ];
-        return response;
-    }
     // 获取查询的文件
     const fileName =
         queryFileKey.split("/")[queryFileKey.split("/").length - 1];

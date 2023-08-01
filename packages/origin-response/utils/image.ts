@@ -1,14 +1,14 @@
+import { IMAGE_OPERATION_SPLIT } from "@/common/constance";
 import sharp, { Sharp } from "sharp";
-import { validImageAction, isNumberString } from "./validator";
-import { IMAGE_OPERATION_SPLIT } from "./constance";
 import { logTime } from ".";
 import { ImageAction, ResizeImageAction } from "../types";
+import { isNumberString, validImageAction } from "./validator";
 
 /**
- * 解析操作字符串
+ * 解析操作字符串（同时校验）
  */
-function parseOperationString(argString: string) {
-    const actionsString = argString
+function parseOperationString(operationString: string) {
+    const actionsString = operationString
         .split(IMAGE_OPERATION_SPLIT)
         .filter((item) => !!item);
     const result = [];
@@ -75,15 +75,9 @@ export async function imageTransfer(
             imageHandle = resizeImage(imageHandle, args);
         } else if (actionName === "quality") {
             quality = Number(args.q);
-        }
-        // 注意：如果格式是 auto 会恒定转换为 webp，webp 回落交给 request.handler 处理
-        else if (actionName === "format") {
+        } else if (actionName === "format") {
             const targetFormat = args.f;
-            if (targetFormat === "auto") {
-                format = "webp";
-            } else {
-                format = targetFormat;
-            }
+            format = targetFormat;
         }
     }
 
