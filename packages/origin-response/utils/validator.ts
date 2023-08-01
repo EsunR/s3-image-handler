@@ -1,3 +1,4 @@
+import { CLIENT_ERROR_PREFIX } from "@/common/constance";
 import { ImageAction, ImageActionName } from "../types";
 
 const VALID_ACTION: Record<
@@ -64,7 +65,9 @@ export function isNumberString(value: any) {
 export function validImageAction(action: ImageAction) {
     const { actionName, args } = action;
     if (!VALID_ACTION_NAMES.includes(actionName)) {
-        throw new Error(`Invalid action name: ${actionName}`);
+        throw new Error(
+            `${CLIENT_ERROR_PREFIX} Invalid action name: ${actionName}`,
+        );
     }
     const validAction = VALID_ACTION[actionName];
     for (const argName in validAction) {
@@ -72,13 +75,15 @@ export function validImageAction(action: ImageAction) {
         const argValue = (args as any)[argName];
         // 检验 arg 是否是必填参数
         if (arg.required && !argValue) {
-            throw new Error(`Missing required argument: ${argName}`);
+            throw new Error(
+                `${CLIENT_ERROR_PREFIX} Missing required argument: ${argName}`,
+            );
         }
         // argValue 有值再进行检验
         else if (argValue) {
             if (arg.validator && !arg.validator(argValue)) {
                 throw new Error(
-                    `Invalid ${actionName} action argument key: ${argName}, value: ${argValue}`,
+                    `${CLIENT_ERROR_PREFIX} Invalid ${actionName} action argument key: ${argName}, value: ${argValue}`,
                 );
             }
         }

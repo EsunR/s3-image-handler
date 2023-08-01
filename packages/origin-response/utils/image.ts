@@ -1,14 +1,14 @@
-import { IMAGE_OPERATION_SPLIT } from "@/common/constance";
+import { CLIENT_ERROR_PREFIX, IMAGE_OPERATION_SPLIT } from "@/common/constance";
 import sharp, { Sharp } from "sharp";
 import { logTime } from ".";
 import { ImageAction, ResizeImageAction } from "../types";
 import { isNumberString, validImageAction } from "./validator";
 
 /**
- * 解析操作字符串（同时校验）
+ * 将 opString 转为 ImageAction 对象，同时校验，如果校验失败抛出错误
  */
-function parseOperationString(operationString: string) {
-    const actionsString = operationString
+function opString2ImageAction(opString: string) {
+    const actionsString = opString
         .split(IMAGE_OPERATION_SPLIT)
         .filter((item) => !!item);
     const result = [];
@@ -19,8 +19,9 @@ function parseOperationString(operationString: string) {
             args: {},
         } as ImageAction;
         args.forEach((arg) => {
-            const argKey = arg.split("_")[0];
-            const argValue = arg.split("_")[1].trim();
+            const kvSplitIndex = arg.indexOf("_");
+            const argKey = arg.slice(0, kvSplitIndex);
+            const argValue = arg.slice(kvSplitIndex + 1).trim();
             Object.assign(action.args, { [argKey]: argValue });
         });
         validImageAction(action);
@@ -38,7 +39,9 @@ function resizeImage(imageHandle: Sharp, args: ResizeImageAction["args"]) {
     const numH = isNumberString(h) ? Number(h) : undefined;
     if (m === "lfit") {
         if (!numW && !numH) {
-            throw new Error(`Missing required argument: w or h`);
+            throw new Error(
+                `${CLIENT_ERROR_PREFIX} Missing required argument: w or h`,
+            );
         }
         return imageHandle.resize(numW, numH, {
             fit: "outside",
@@ -46,27 +49,26 @@ function resizeImage(imageHandle: Sharp, args: ResizeImageAction["args"]) {
         });
     } else if (m === "mfit") {
         if (!numW && !numH) {
-            throw new Error(`Missing required argument: w or h`);
+            throw new Error(
+                `${CLIENT_ERROR_PREFIX} Missing required argument: w or h`,
+            );
         }
         return imageHandle.resize(numW, numH, {
             fit: "inside",
             withoutEnlargement: limit === "1",
         });
     } else {
-        throw new Error(`Invalid resize mode: ${m}`);
+        throw new Error(`${CLIENT_ERROR_PREFIX} Invalid resize mode: ${m}`);
     }
 }
 
-export async function imageTransfer(
-    imageBuffer: Uint8Array,
-    operationString: string,
-) {
+export async function imageTransfer(imageBuffer: Uint8Array, opString: string) {
     let imageHandle = sharp(imageBuffer);
     const metadata = await logTime(
         async () => await imageHandle.metadata(),
         "Read metadata before transform",
     );
-    const actions = parseOperationString(operationString);
+    const actions = opString2ImageAction(opString);
     let quality = 0;
     let format = metadata.format;
     for (const action of actions) {

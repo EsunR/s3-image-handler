@@ -1,15 +1,15 @@
 import {
-    decodeImageOpString,
-    encodeImageOpString,
-    getUriOpString,
-    uriWithOpString,
+    decodeOpString,
+    encodeOpString,
+    parseUri,
+    uriIncludeOpString,
 } from "@/common/utils";
 import util from "util";
 
 export async function handler(event: CfViewerRequestEvent) {
     const request = event.Records[0].cf.request;
     // 判断是否是有效 uri
-    if (!uriWithOpString(request.uri)) {
+    if (!uriIncludeOpString(request.uri)) {
         return request;
     }
 
@@ -37,17 +37,17 @@ export async function handler(event: CfViewerRequestEvent) {
     }
 
     // 判断是否还包含 image op 字符串
-    if (!uriWithOpString(request.uri)) {
+    if (!uriIncludeOpString(request.uri)) {
         return request;
     }
 
     // 规范 uri，防止参数重复
-    const imageOpString = getUriOpString(request.uri);
-    const imageOpRecord = decodeImageOpString(imageOpString);
-    const formatedImageOpString = encodeImageOpString(imageOpRecord);
-    request.uri = request.uri.replace(imageOpString, formatedImageOpString);
+    const { opString } = parseUri(request.uri);
+    const imageOpRecord = decodeOpString(opString);
+    const formattedOpString = encodeOpString(imageOpRecord);
+    request.uri = request.uri.replace(opString, formattedOpString);
     console.log(
-        `Formated image operation string: ${imageOpString} => ${formatedImageOpString}`,
+        `Formatted image operation string: ${opString} => ${formattedOpString}`,
     );
 
     // 对 uri 参数进行差异值合并

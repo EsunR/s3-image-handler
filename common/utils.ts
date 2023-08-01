@@ -5,31 +5,36 @@ type ImageOpRecord = Record<string, Record<string, any>>;
 /**
  * uri 中是否包含 __op__ 字符串
  */
-export function uriWithOpString(uri: string) {
-    debugger;
-    return uri.includes(IMAGE_OPERATION_SPLIT);
+export function uriIncludeOpString(uri: string) {
+    return typeof uri === "string"
+        ? uri.includes(IMAGE_OPERATION_SPLIT)
+        : false;
 }
 
-// export function parseUri(uri: string) {
-//     const fileKey = uri.startsWith("/") ? uri.slice(1) : uri;
-//     const splitUri = fileKey.split("/");
-// }
+export function parseUri(uri: string) {
+    const fileKey = (uri.startsWith("/") ? uri.slice(1) : uri).split("?")[0];
+    const originFileKey = fileKey.split("__op__")[0];
+    const splitUri = fileKey.split("/");
+    const fileName = splitUri[splitUri.length - 1];
+    const originFileName = fileName.split("__op__")[0];
+    const opStringStartIndex = fileName.match(new RegExp(IMAGE_OPERATION_SPLIT))
+        ?.index;
+    const opString =
+        typeof opStringStartIndex === "number"
+            ? fileName.slice(opStringStartIndex)
+            : "";
 
-export function getUriOpString(uri: string) {
-    const splitUri = uri.split("/");
-    const fileNameWithOpString = splitUri[splitUri.length - 1].split("?")[0];
-    const opStringStartIndex = fileNameWithOpString.match(
-        new RegExp(IMAGE_OPERATION_SPLIT),
-    )?.index;
-    if (opStringStartIndex === undefined) {
-        return "";
-    }
-    const operationString = fileNameWithOpString.slice(opStringStartIndex);
-    return operationString;
+    return {
+        fileKey,
+        originFileKey,
+        fileName,
+        originFileName,
+        opString,
+    };
 }
 
-export function decodeImageOpString(operationString: string) {
-    const actionsString = operationString
+export function decodeOpString(opString: string) {
+    const actionsString = opString
         .split(IMAGE_OPERATION_SPLIT)
         .filter((item) => !!item);
     const result: ImageOpRecord = {};
@@ -37,15 +42,16 @@ export function decodeImageOpString(operationString: string) {
         const [actionName, ...args] = actionString.split(",");
         result[actionName] = {};
         args.forEach((arg) => {
-            const argKey = arg.split("_")[0];
-            const argValue = arg.split("_")[1].trim();
+            const kvSplitIndex = arg.indexOf("_");
+            const argKey = arg.slice(0, kvSplitIndex);
+            const argValue = arg.slice(kvSplitIndex + 1).trim();
             Object.assign(result[actionName], { [argKey]: argValue });
         });
     }
     return result;
 }
 
-export function encodeImageOpString(imageOpRecord: ImageOpRecord) {
+export function encodeOpString(imageOpRecord: ImageOpRecord) {
     let result = "";
     IMAGE_OPERATION_SORT.forEach((opSort) => {
         const { op, args } = opSort;
