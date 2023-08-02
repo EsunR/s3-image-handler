@@ -1,34 +1,8 @@
-import { CLIENT_ERROR_PREFIX, IMAGE_OPERATION_SPLIT } from "@/common/constance";
+import { CLIENT_ERROR_PREFIX } from "@/common/constance";
 import sharp, { Sharp } from "sharp";
 import { logTime } from ".";
 import { ImageAction, ResizeImageAction } from "../types";
-import { isNumberString, validImageAction } from "./validator";
-
-/**
- * 将 opString 转为 ImageAction 对象，同时校验，如果校验失败抛出错误
- */
-function opString2ImageAction(opString: string) {
-    const actionsString = opString
-        .split(IMAGE_OPERATION_SPLIT)
-        .filter((item) => !!item);
-    const result = [];
-    for (const actionString of actionsString) {
-        const [actionName, ...args] = actionString.split(",");
-        const action = {
-            actionName,
-            args: {},
-        } as ImageAction;
-        args.forEach((arg) => {
-            const kvSplitIndex = arg.indexOf("_");
-            const argKey = arg.slice(0, kvSplitIndex);
-            const argValue = arg.slice(kvSplitIndex + 1).trim();
-            Object.assign(action.args, { [argKey]: argValue });
-        });
-        validImageAction(action);
-        result.push(action);
-    }
-    return result;
-}
+import { isNumberString } from "./validator";
 
 /**
  * 裁剪图片
@@ -62,24 +36,29 @@ function resizeImage(imageHandle: Sharp, args: ResizeImageAction["args"]) {
     }
 }
 
-export async function imageTransfer(imageBuffer: Uint8Array, opString: string) {
+export async function imageTransfer(
+    imageBuffer: Uint8Array,
+    actions: ImageAction[],
+) {
     let imageHandle = sharp(imageBuffer);
     const metadata = await logTime(
-        async () => await imageHandle.metadata(),
-        "Read metadata before transform",
+        () => imageHandle.metadata(),
+        "Read image metadata",
     );
-    const actions = opString2ImageAction(opString);
     let quality = 0;
     let format = metadata.format;
     for (const action of actions) {
         const { actionName, args } = action;
         if (actionName === "resize") {
-            imageHandle = resizeImage(imageHandle, args);
+            imageHandle = await logTime(
+                () => resizeImage(imageHandle, args),
+                "Resize image",
+            );
         } else if (actionName === "quality") {
             quality = Number(args.q);
         } else if (actionName === "format") {
             const targetFormat = args.f;
-            format = targetFormat;
+            format = targetFormat as keyof sharp.FormatEnum;
         }
     }
 
@@ -89,13 +68,21 @@ export async function imageTransfer(imageBuffer: Uint8Array, opString: string) {
         actions.map((item) => item.actionName).includes("quality")
     ) {
         imageHandle = await logTime(
-            async () =>
-                imageHandle.toFormat(format, { quality: quality || undefined }),
-            "Transform format and quantity",
+            () =>
+                imageHandle.toFormat(format as keyof sharp.FormatEnum, {
+                    quality: quality || undefined,
+                }),
+            "Transform image format and quantity",
         );
     }
+
+    const buffer = await logTime(
+        () => imageHandle.toBuffer(),
+        "Read image buffer",
+    );
+
     return {
-        buffer: await imageHandle.toBuffer(),
+        buffer,
         contentType: `image/${format}`,
     };
 }

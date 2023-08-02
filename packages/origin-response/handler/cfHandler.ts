@@ -4,10 +4,9 @@ import {
     PutObjectCommand,
     S3Client,
 } from "@aws-sdk/client-s3";
-import { loadEnv } from "../utils";
+import util from "util";
+import { loadEnv, logTime, opString2ImageActions } from "../utils";
 import { imageTransfer } from "../utils/image";
-import { errorResponse as _errorResponse } from "../utils/response";
-import { CLIENT_ERROR_PREFIX } from "@/common/constance";
 
 const { BUCKET } = loadEnv();
 
@@ -18,10 +17,14 @@ export default async function cfHandler(
     event: CfOriginResponseEvent,
     s3Client: S3Client,
 ) {
-    const cfEvent = event.Records[0].cf;
-    const response = cfEvent.response;
+    const cfEvent = event?.Records[0]?.cf;
+    const response = cfEvent?.response;
     // 如果能够正确处理资源，或者请求的数据没有图片操作符，则正常返回数据
-    if (response.status !== "403" || !uriIncludeOpString(cfEvent.request.uri)) {
+    if (
+        !response ||
+        response.status !== "403" ||
+        !uriIncludeOpString(cfEvent.request.uri)
+    ) {
         response.headers["lambda-edge"] = [
             {
                 key: "Lambda-Edge",
@@ -30,87 +33,102 @@ export default async function cfHandler(
         ];
         return response;
     }
+
+    // ========== 触发图片处理逻辑 ==========
+    console.log("Response event:\n", util.inspect(event, { depth: 8 }));
     const parsedUri = parseUri(cfEvent.request.uri);
     const { fileKey, originFileKey, opString } = parsedUri;
     console.log("parsedUri: ", parsedUri);
-    const errorResponse = (body: string, statusCode: number = 400) => {
-        return _errorResponse({
-            body,
-            response,
-            statusCode,
-        });
-    };
 
-    const downloadStartTime = Date.now();
-    try {
-        const originImage = await s3Client.send(
-            new GetObjectCommand({
-                Bucket: BUCKET,
-                Key: originFileKey,
-            }),
-        );
-        const imageBuffer = await originImage.Body?.transformToByteArray();
-        console.log("Download time: ", Date.now() - downloadStartTime, "ms");
+    // 转换 & 校验 opString
+    const actions = opString2ImageActions(opString);
 
-        if (!imageBuffer) {
-            throw new Error("Image buffer is empty");
-        }
+    // 下载图片
+    const originImage = await logTime(
+        () =>
+            s3Client.send(
+                new GetObjectCommand({
+                    Bucket: BUCKET,
+                    Key: originFileKey,
+                }),
+            ),
+        "Download time",
+    );
+    const imageBuffer = await originImage.Body?.transformToByteArray();
 
-        const transStartTime = Date.now();
-        const { buffer: transformedImageBuffer, contentType } =
-            await imageTransfer(imageBuffer, opString);
-        console.log("Transform time: ", Date.now() - transStartTime, "ms");
+    if (!imageBuffer) {
+        throw new Error("Image buffer is empty");
+    }
 
-        s3Client.send(
-            new PutObjectCommand({
-                Bucket: BUCKET,
-                Key: fileKey,
-                Body: transformedImageBuffer,
-                ContentType: contentType,
-            }),
-        );
+    const { buffer: transformedImageBuffer, contentType } = await logTime(
+        () => imageTransfer(imageBuffer, actions),
+        "Image transform total time",
+    );
 
-        // 直接复用图片处理结果
-        response.status = "200";
-        response.statusDescription = "OK";
-        response.body = transformedImageBuffer.toString("base64");
-        response.bodyEncoding = "base64";
-        response.headers["content-type"] = [
+    // 请求结果禁止让 CloudFront 缓存
+    response.headers["cache-control"] = [
+        {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+        },
+    ];
+
+    logTime(
+        () =>
+            s3Client.send(
+                new PutObjectCommand({
+                    Bucket: BUCKET,
+                    Key: fileKey,
+                    Body: transformedImageBuffer,
+                    ContentType: contentType,
+                }),
+            ),
+        `Upload time (${fileKey})`,
+    );
+
+    // 判断 buffer 是否超过 1.3MB，如果超过则等待图片上传并重定向到原请求
+    if (transformedImageBuffer.length > 1.3 * 1024 * 1024) {
+        console.log("Image size is too large, redirect to origin request");
+        // 需要将 CloudFront 最小 TTL 设置为 0，否则会导致重复重定向
+        response.status = "302";
+        response.statusDescription = "Found";
+        response.headers.location = [
             {
-                key: "Content-Type",
-                value: contentType,
-            },
-        ];
-        response.headers["content-length"] = [
-            {
-                key: "Content-Length",
-                value: transformedImageBuffer.length.toString(),
+                key: "Location",
+                value: `/${fileKey}`,
             },
         ];
         response.headers["lambda-edge"] = [
             {
                 key: "Lambda-Edge",
-                value: "success",
-            },
-        ];
-        // 这次请求不让 CloudFront 缓存
-        response.headers["cache-control"] = [
-            {
-                key: "Cache-Control",
-                value: "no-cache, no-store, must-revalidate",
+                value: "redirect",
             },
         ];
         return response;
-    } catch (e: any) {
-        console.log("Download time: ", Date.now() - downloadStartTime, "ms");
-        console.log("Image handler exception:\n", e);
-        // 只有 validator 的消息才能暴露出去
-        const shouldShowErrorMsg = e?.message?.includes(CLIENT_ERROR_PREFIX);
-        return errorResponse(
-            shouldShowErrorMsg
-                ? (e.message as string).replace(CLIENT_ERROR_PREFIX, "").trim()
-                : "File not exist",
-            shouldShowErrorMsg ? 400 : e?.statusCode || 404,
-        );
     }
+
+    // 直接复用图片处理结果
+    response.status = "200";
+    response.statusDescription = "OK";
+    response.body = transformedImageBuffer.toString("base64");
+    response.bodyEncoding = "base64";
+    response.headers["content-type"] = [
+        {
+            key: "Content-Type",
+            value: contentType,
+        },
+    ];
+    response.headers["content-length"] = [
+        {
+            key: "Content-Length",
+            value: transformedImageBuffer.length.toString(),
+        },
+    ];
+    response.headers["lambda-edge"] = [
+        {
+            key: "Lambda-Edge",
+            value: "success",
+        },
+    ];
+    return response;
 }
