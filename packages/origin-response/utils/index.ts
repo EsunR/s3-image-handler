@@ -1,8 +1,7 @@
-import { IMAGE_OPERATION_SPLIT } from '@/common/constance';
+import { IMAGE_OP_STRING_SPLIT } from '@/common/constance';
 import dotenv from 'dotenv';
 import path from 'path';
 import { validImageAction } from './validator';
-import { ImageAction } from '../types';
 
 export async function logTime<T>(
     fn: (() => Promise<T>) | (() => T),
@@ -46,7 +45,7 @@ export function loadEnv() {
  */
 export function opString2ImageActions(opString: string): ImageAction[] {
     const actionsString = opString
-        .split(IMAGE_OPERATION_SPLIT)
+        .split(IMAGE_OP_STRING_SPLIT)
         .filter((item) => !!item);
     const result = [];
     for (const actionString of actionsString) {
@@ -65,4 +64,49 @@ export function opString2ImageActions(opString: string): ImageAction[] {
         result.push(action);
     }
     return result;
+}
+
+const fileKeyRequestRecord: Record<string, any> = {};
+/**
+ * 检查原始文件的请求次数，如果超过 MAX_IMAGE_HANDLE_TIMES 次，则不再处理，重定向到原图
+ */
+export function checkOriginFileRequestTimes(
+    originFileKey: string,
+    response: CfResponse,
+    maxTimes: number,
+) {
+    if (isNaN(maxTimes)) {
+        throw new Error('Env MAX_IMAGE_HANDLE_TIMES must be a number');
+    }
+    if (fileKeyRequestRecord[originFileKey]) {
+        fileKeyRequestRecord[originFileKey] += 1;
+    } else {
+        fileKeyRequestRecord[originFileKey] = 1;
+    }
+    console.log(
+        `File "${originFileKey}" request times: `,
+        fileKeyRequestRecord[originFileKey],
+    );
+    if (fileKeyRequestRecord[originFileKey] > maxTimes) {
+        // 如果同一个文件的请求次数超过 50 次，则不再处理
+        console.log(
+            `File "${originFileKey}" request times is over 50, stop processing`,
+        );
+        // 重定向到原图
+        response.status = '302';
+        response.statusDescription = 'Found';
+        response.headers.location = [
+            {
+                key: 'Location',
+                value: `/${originFileKey}`,
+            },
+        ];
+        response.headers['lambda-edge'] = [
+            {
+                key: 'Lambda-Edge',
+                value: 'request-too-many-times',
+            },
+        ];
+        return response;
+    }
 }

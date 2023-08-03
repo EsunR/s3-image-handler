@@ -1,8 +1,7 @@
 import { CLIENT_ERROR_PREFIX } from '@/common/constance';
 import sharp, { Sharp } from 'sharp';
 import { logTime } from '.';
-import { ImageAction, ResizeImageAction } from '../types';
-import { isNumberString } from './validator';
+import { isNumberString } from '@/common/utils';
 
 /**
  * 裁剪图片
@@ -29,6 +28,16 @@ function resizeImage(imageHandle: Sharp, args: ResizeImageAction['args']) {
         }
         return imageHandle.resize(numW, numH, {
             fit: 'inside',
+            withoutEnlargement: limit === '1',
+        });
+    } else if (m === 'fixed') {
+        if (!numW || !numH) {
+            throw new Error(
+                `${CLIENT_ERROR_PREFIX} Missing required argument: w and h`,
+            );
+        }
+        return imageHandle.resize(numW, numH, {
+            fit: 'fill',
             withoutEnlargement: limit === '1',
         });
     } else {

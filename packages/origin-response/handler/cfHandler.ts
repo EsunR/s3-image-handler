@@ -5,10 +5,15 @@ import {
     S3Client,
 } from '@aws-sdk/client-s3';
 import util from 'util';
-import { loadEnv, logTime, opString2ImageActions } from '../utils';
+import {
+    checkOriginFileRequestTimes,
+    loadEnv,
+    logTime,
+    opString2ImageActions,
+} from '../utils';
 import { imageTransfer } from '../utils/image';
 
-const { BUCKET } = loadEnv();
+const { BUCKET, MAX_IMAGE_HANDLE_TIMES } = loadEnv();
 
 /**
  * CloudFront event handler
@@ -40,8 +45,40 @@ export default async function cfHandler(
     const { fileKey, originFileKey, opString } = parsedUri;
     console.log('parsedUri: ', parsedUri);
 
+    // 检查是否是恶意重复请求
+    if (MAX_IMAGE_HANDLE_TIMES) {
+        const modifiedResponse = checkOriginFileRequestTimes(
+            originFileKey,
+            response,
+            Number(MAX_IMAGE_HANDLE_TIMES),
+        );
+        if (modifiedResponse) {
+            return modifiedResponse;
+        }
+    }
+
     // 转换 & 校验 opString
     const actions = opString2ImageActions(opString);
+
+    // 获取原始文件的文件类型，如果是不是图片则直接返回请求结果
+    const originFileHead = await logTime(
+        () =>
+            s3Client.send(
+                new GetObjectCommand({
+                    Bucket: BUCKET,
+                    Key: originFileKey,
+                    Range: 'bytes=0-0',
+                }),
+            ),
+        'Get file head time',
+    );
+    const originFileContentType = originFileHead.ContentType;
+    if (!originFileContentType?.startsWith('image/')) {
+        console.log(
+            `File "${originFileKey}" is not a image, content type: ${originFileContentType}`,
+        );
+        return response;
+    }
 
     // 下载图片
     const originImage = await logTime(
@@ -65,14 +102,6 @@ export default async function cfHandler(
         'Image transform total time',
     );
 
-    // 请求结果禁止让 CloudFront 缓存
-    response.headers['cache-control'] = [
-        {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
-        },
-    ];
-
     logTime(
         () =>
             s3Client.send(
@@ -85,6 +114,14 @@ export default async function cfHandler(
             ),
         `Upload time (${fileKey})`,
     );
+
+    // 请求结果禁止让 CloudFront 缓存
+    response.headers['cache-control'] = [
+        {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+        },
+    ];
 
     // 判断 buffer 是否超过 1.3MB，如果超过则等待图片上传并重定向到原请求
     if (transformedImageBuffer.length > 1.3 * 1024 * 1024) {

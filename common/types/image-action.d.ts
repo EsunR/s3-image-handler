@@ -1,4 +1,4 @@
-export interface ResizeImageAction {
+interface ResizeImageAction {
     actionName: 'resize';
     args: {
         m: 'lfit' | 'mfit' /** "fill", "pad", "fixed" */;
@@ -8,23 +8,20 @@ export interface ResizeImageAction {
     };
 }
 
-export interface QualityImageAction {
+interface QualityImageAction {
     actionName: 'quality';
     args: {
         q: string;
     };
 }
 
-export interface FormatImageAction {
+interface FormatImageAction {
     actionName: 'format';
     args: {
         f: 'jpg' | 'png' | 'webp' | 'heic' | 'gif' | 'auto';
     };
 }
 
-export type ImageAction =
-    | ResizeImageAction
-    | QualityImageAction
-    | FormatImageAction;
+type ImageAction = ResizeImageAction | QualityImageAction | FormatImageAction;
 
-export type ImageActionName = ImageAction['actionName'];
+type ImageActionName = ImageAction['actionName'];

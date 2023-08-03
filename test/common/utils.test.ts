@@ -1,13 +1,46 @@
 import {
+    querStringIncludeOpString,
     uriIncludeOpString,
     parseUri,
+    getOpStringInQuerystring,
+    decodeOpStringInQuery,
     decodeOpString,
     encodeOpString,
+    isNumberString,
+    getReduceModValue,
 } from '@/common/utils';
 
-// const TEST_OP_STRING =
-//     "__op__format,f_auto__op__resize,m_lfit,w_100,h_100,limit_1__op__quality,q_90";
-// const TEST_URI = "/path/to/file/image.png";
+describe('querStringIncludeOpString', () => {
+    test('is image op querystring', () => {
+        expect(
+            querStringIncludeOpString(
+                '/path/to/file/image.png?x-bce-process=image/format,f_auto',
+            ),
+        ).toBe(true);
+    });
+
+    test('is not image op querystring', () => {
+        expect(querStringIncludeOpString('/path/to/file/image.png')).toBe(
+            false,
+        );
+    });
+
+    test('right query key but wrong value', () => {
+        expect(
+            querStringIncludeOpString(
+                '/path/to/file/image.png?x-bce-process=doc/convert-to-pdf',
+            ),
+        ).toBe(false);
+    });
+
+    test('right query key and prefix, but not action keywords', () => {
+        expect(
+            querStringIncludeOpString(
+                '/path/to/file/image.png?x-bce-process=image',
+            ),
+        ).toBe(false);
+    });
+});
 
 describe('uriIncludeOpString', () => {
     test('is image op uri', () => {
@@ -80,6 +113,60 @@ describe('parseUri', () => {
     });
 });
 
+describe('getOpStringInQuerystring', () => {
+    test('get op string in querystring', () => {
+        expect(
+            getOpStringInQuerystring('x-bce-process=image/format,f_auto'),
+        ).toEqual('/format,f_auto');
+    });
+
+    test('wrong query key', () => {
+        expect(
+            getOpStringInQuerystring('x-bce-processs=image/format,f_auto'),
+        ).toEqual('');
+    });
+
+    test('wrong op string prefix', () => {
+        expect(
+            getOpStringInQuerystring('x-bce-process=images/format,f_auto'),
+        ).toEqual('');
+    });
+
+    test('empty string input', () => {
+        expect(getOpStringInQuerystring('')).toEqual('');
+    });
+
+    test('repeat op string prefix', () => {
+        expect(
+            getOpStringInQuerystring(
+                'x-bce-process=image/format,f_auto/image/quality,q_90',
+            ),
+        ).toEqual('/format,f_auto/image/quality,q_90');
+    });
+});
+
+describe('decodeOpStringInQuery', () => {
+    test('decode image op string successful', () => {
+        expect(decodeOpStringInQuery('/format,f_auto/quality,q_90')).toEqual({
+            format: { f: 'auto' },
+            quality: { q: '90' },
+        });
+    });
+
+    test('wrong op symbol use', () => {
+        expect(decodeOpStringInQuery('/format,f_auto_quality,q_90')).toEqual({
+            format: { f: 'auto_quality', q: '90' },
+        });
+    });
+
+    test('op string with empty action', () => {
+        expect(decodeOpStringInQuery('/resize/format,f_auto')).toEqual({
+            resize: {},
+            format: { f: 'auto' },
+        });
+    });
+});
+
 describe('decodeOpString', () => {
     test('decode image op string successful', () => {
         expect(
@@ -106,7 +193,6 @@ describe('decodeOpString', () => {
     });
 
     test('wrong op symbol use', () => {
-        debugger;
         expect(decodeOpString('_op_format,f_auto_op_quality,q_90')).toEqual({
             _op_format: { f: 'auto_op_quality', q: '90' },
         });
@@ -124,51 +210,96 @@ describe('encodeOpString', () => {
     test('encode image op string successful', () => {
         expect(
             encodeOpString({
-                format: { f: 'auto' },
+                format: { f: 'webp' },
                 resize: {
                     m: 'lfit',
-                    limit: '1',
-                    h: '100',
-                    w: '100',
+                    limit: '0',
+                    h: '120',
+                    w: '120',
                 },
                 quality: { q: '90' },
             }),
         ).toEqual(
-            '__op__resize,m_lfit,w_100,h_100,limit_1__op__quality,q_90__op__format,f_auto',
+            '__op__resize,m_lfit,w_100,h_100__op__quality,q_80__op__format,f_webp',
         );
     });
 
+    /**
+     * 当某个 action 的参数为空时，仍会生成对应的 action 字符串
+     */
     test('encode image op string with empty args', () => {
         expect(
             encodeOpString({
-                format: { f: 'auto' },
+                format: { f: 'webp' },
                 resize: {},
                 quality: { q: '90' },
             }),
-        ).toEqual('__op__resize__op__quality,q_90__op__format,f_auto');
+        ).toEqual('__op__resize__op__quality,q_80__op__format,f_webp');
     });
 
+    /**
+     * 当某个 action 的参数不存在时，不会生成对应的 action 参数字符串
+     */
     test('encode image op string with nonexistent args', () => {
         expect(
             encodeOpString({
-                format: { f: 'auto' },
+                format: { f: 'webp' },
                 resize: {
                     nonexistent: 'nonexistent',
                 },
                 quality: { q: '90' },
             }),
-        ).toEqual('__op__resize__op__quality,q_90__op__format,f_auto');
+        ).toEqual('__op__resize__op__quality,q_80__op__format,f_webp');
     });
 
+    /**
+     * 当某个 action 不存在时，不会生成对应的 action 字符串
+     */
     test('encode image op string with nonexistent action', () => {
         expect(
             encodeOpString({
-                format: { f: 'auto' },
+                format: { f: 'webp' },
                 nonexistent: {
                     arg: 'arg',
                 },
                 quality: { q: '90' },
             }),
-        ).toEqual('__op__quality,q_90__op__format,f_auto');
+        ).toEqual('__op__quality,q_80__op__format,f_webp');
+    });
+});
+
+describe('isNumberString', () => {
+    test('is number string', () => {
+        expect(isNumberString('123')).toBe(true);
+    });
+
+    test('is float number string', () => {
+        expect(isNumberString('0001.11')).toBe(true);
+    });
+
+    test('is not number string', () => {
+        expect(isNumberString('123a')).toBe(false);
+    });
+
+    test('is empty string', () => {
+        expect(isNumberString('')).toBe(false);
+    });
+});
+
+describe('getReduceModValue', () => {
+    test('get reduce mod value', () => {
+        expect(getReduceModValue('450', 100)).toBe('400');
+    });
+
+    test('get reduce mod value', () => {
+        expect(getReduceModValue('50', 100)).toBe('0');
+    });
+
+    test('not number string input', () => {
+        expect(getReduceModValue('value', 100)).toBe('value');
+    });
+
+    test('negative number string input', () => {
+        expect(getReduceModValue('-50', 100)).toBe('-50');
     });
 });
