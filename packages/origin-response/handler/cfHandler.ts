@@ -1,12 +1,12 @@
-import { parseUri, uriIncludeOpString } from "@/common/utils";
+import { parseUri, uriIncludeOpString } from '@/common/utils';
 import {
     GetObjectCommand,
     PutObjectCommand,
     S3Client,
-} from "@aws-sdk/client-s3";
-import util from "util";
-import { loadEnv, logTime, opString2ImageActions } from "../utils";
-import { imageTransfer } from "../utils/image";
+} from '@aws-sdk/client-s3';
+import util from 'util';
+import { loadEnv, logTime, opString2ImageActions } from '../utils';
+import { imageTransfer } from '../utils/image';
 
 const { BUCKET } = loadEnv();
 
@@ -22,23 +22,23 @@ export default async function cfHandler(
     // 如果能够正确处理资源，或者请求的数据没有图片操作符，则正常返回数据
     if (
         !response ||
-        response.status !== "403" ||
+        response.status !== '403' ||
         !uriIncludeOpString(cfEvent.request.uri)
     ) {
-        response.headers["lambda-edge"] = [
+        response.headers['lambda-edge'] = [
             {
-                key: "Lambda-Edge",
-                value: "nothing-hanppened",
+                key: 'Lambda-Edge',
+                value: 'nothing-hanppened',
             },
         ];
         return response;
     }
 
     // ========== 触发图片处理逻辑 ==========
-    console.log("Response event:\n", util.inspect(event, { depth: 8 }));
+    console.log('Response event:\n', util.inspect(event, { depth: 8 }));
     const parsedUri = parseUri(cfEvent.request.uri);
     const { fileKey, originFileKey, opString } = parsedUri;
-    console.log("parsedUri: ", parsedUri);
+    console.log('parsedUri: ', parsedUri);
 
     // 转换 & 校验 opString
     const actions = opString2ImageActions(opString);
@@ -52,24 +52,24 @@ export default async function cfHandler(
                     Key: originFileKey,
                 }),
             ),
-        "Download time",
+        'Download time',
     );
     const imageBuffer = await originImage.Body?.transformToByteArray();
 
     if (!imageBuffer) {
-        throw new Error("Image buffer is empty");
+        throw new Error('Image buffer is empty');
     }
 
     const { buffer: transformedImageBuffer, contentType } = await logTime(
         () => imageTransfer(imageBuffer, actions),
-        "Image transform total time",
+        'Image transform total time',
     );
 
     // 请求结果禁止让 CloudFront 缓存
-    response.headers["cache-control"] = [
+    response.headers['cache-control'] = [
         {
-            key: "Cache-Control",
-            value: "no-cache, no-store, must-revalidate",
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
         },
     ];
 
@@ -88,46 +88,46 @@ export default async function cfHandler(
 
     // 判断 buffer 是否超过 1.3MB，如果超过则等待图片上传并重定向到原请求
     if (transformedImageBuffer.length > 1.3 * 1024 * 1024) {
-        console.log("Image size is too large, redirect to origin request");
+        console.log('Image size is too large, redirect to origin request');
         // 需要将 CloudFront 最小 TTL 设置为 0，否则会导致重复重定向
-        response.status = "302";
-        response.statusDescription = "Found";
+        response.status = '302';
+        response.statusDescription = 'Found';
         response.headers.location = [
             {
-                key: "Location",
+                key: 'Location',
                 value: `/${fileKey}`,
             },
         ];
-        response.headers["lambda-edge"] = [
+        response.headers['lambda-edge'] = [
             {
-                key: "Lambda-Edge",
-                value: "redirect",
+                key: 'Lambda-Edge',
+                value: 'redirect',
             },
         ];
         return response;
     }
 
     // 直接复用图片处理结果
-    response.status = "200";
-    response.statusDescription = "OK";
-    response.body = transformedImageBuffer.toString("base64");
-    response.bodyEncoding = "base64";
-    response.headers["content-type"] = [
+    response.status = '200';
+    response.statusDescription = 'OK';
+    response.body = transformedImageBuffer.toString('base64');
+    response.bodyEncoding = 'base64';
+    response.headers['content-type'] = [
         {
-            key: "Content-Type",
+            key: 'Content-Type',
             value: contentType,
         },
     ];
-    response.headers["content-length"] = [
+    response.headers['content-length'] = [
         {
-            key: "Content-Length",
+            key: 'Content-Length',
             value: transformedImageBuffer.length.toString(),
         },
     ];
-    response.headers["lambda-edge"] = [
+    response.headers['lambda-edge'] = [
         {
-            key: "Lambda-Edge",
-            value: "success",
+            key: 'Lambda-Edge',
+            value: 'success',
         },
     ];
     return response;

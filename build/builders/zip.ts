@@ -1,9 +1,9 @@
-import fs from "fs";
-import { dest, parallel, src } from "gulp";
-import gulpZip from "gulp-zip";
-import path from "path";
-import { DIST_DIR_PATH } from "../constance";
-import { withTaskName } from "../utils";
+import fs from 'fs';
+import { dest, parallel, src } from 'gulp';
+import gulpZip from 'gulp-zip';
+import path from 'path';
+import { DIST_DIR_PATH } from '../constance';
+import { withTaskName } from '../utils';
 
 export default async function zip(cb: any) {
     // 分别单独将 DIST_DIR_PATH 的每个文件夹压缩成一个独立的 zip 压缩包

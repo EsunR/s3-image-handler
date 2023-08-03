@@ -1,24 +1,24 @@
 export interface ResizeImageAction {
-    actionName: "resize";
+    actionName: 'resize';
     args: {
-        m: "lfit" | "mfit" /** "fill", "pad", "fixed" */;
+        m: 'lfit' | 'mfit' /** "fill", "pad", "fixed" */;
         w?: string;
         h?: string;
-        limit?: "0" | "1";
+        limit?: '0' | '1';
     };
 }
 
 export interface QualityImageAction {
-    actionName: "quality";
+    actionName: 'quality';
     args: {
         q: string;
     };
 }
 
 export interface FormatImageAction {
-    actionName: "format";
+    actionName: 'format';
     args: {
-        f: "jpg" | "png" | "webp" | "heic" | "gif" | "auto";
+        f: 'jpg' | 'png' | 'webp' | 'heic' | 'gif' | 'auto';
     };
 }
 
@@ -27,4 +27,4 @@ export type ImageAction =
     | QualityImageAction
     | FormatImageAction;
 
-export type ImageActionName = ImageAction["actionName"];
+export type ImageActionName = ImageAction['actionName'];

@@ -1,8 +1,8 @@
-import { IMAGE_OPERATION_SPLIT } from "@/common/constance";
-import dotenv from "dotenv";
-import path from "path";
-import { validImageAction } from "./validator";
-import { ImageAction } from "../types";
+import { IMAGE_OPERATION_SPLIT } from '@/common/constance';
+import dotenv from 'dotenv';
+import path from 'path';
+import { validImageAction } from './validator';
+import { ImageAction } from '../types';
 
 export async function logTime<T>(
     fn: (() => Promise<T>) | (() => T),
@@ -11,7 +11,7 @@ export async function logTime<T>(
     const start = Date.now();
     const result = await fn();
     const end = Date.now();
-    console.log(`[${tag}] Time: `, end - start, "ms");
+    console.log(`[${tag}] Time: `, end - start, 'ms');
     return result;
 }
 
@@ -34,9 +34,9 @@ export function requestHeadersKey2LowerCase(headers: Record<string, string>) {
 export function loadEnv() {
     dotenv.config({
         path:
-            process.env.NODE_ENV === "test"
-                ? path.resolve(__dirname, "../.evn.test")
-                : path.resolve(__dirname, ".env"),
+            process.env.NODE_ENV === 'test'
+                ? path.resolve(__dirname, '../.evn.test')
+                : path.resolve(__dirname, '.env'),
     });
     return process.env;
 }
@@ -50,13 +50,13 @@ export function opString2ImageActions(opString: string): ImageAction[] {
         .filter((item) => !!item);
     const result = [];
     for (const actionString of actionsString) {
-        const [actionName, ...args] = actionString.split(",");
+        const [actionName, ...args] = actionString.split(',');
         const action = {
             actionName,
             args: {},
         } as ImageAction;
         args.forEach((arg) => {
-            const kvSplitIndex = arg.indexOf("_");
+            const kvSplitIndex = arg.indexOf('_');
             const argKey = arg.slice(0, kvSplitIndex);
             const argValue = arg.slice(kvSplitIndex + 1).trim();
             Object.assign(action.args, { [argKey]: argValue });

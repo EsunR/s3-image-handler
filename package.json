@@ -12,7 +12,8 @@
     "clean:node_modules": "find . -name \"node_modules\" -type d -exec rm -rf '{}' +",
     "test:viewer-request": "ts-node -r tsconfig-paths/register ./test/viewer-request.ts",
     "test": "jest --config ./jest.config.js",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "lint": "eslint --ext .ts,.js ./ --fix"
   },
   "author": "",
   "license": "ISC",

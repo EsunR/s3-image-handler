@@ -3,12 +3,12 @@ export const withTaskName = <T>(name: string, fn: T) =>
 
 export const excludeFiles = (files: string[]) => {
     const excludes = [
-        "node_modules",
-        "test",
-        "mock",
-        "gulpfile",
-        "dist",
-        "types",
+        'node_modules',
+        'test',
+        'mock',
+        'gulpfile',
+        'dist',
+        'types',
     ];
     return files.filter(
         (path) => !excludes.some((exclude) => path.includes(exclude)),

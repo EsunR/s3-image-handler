@@ -5,18 +5,18 @@ export function errorResponse(option: {
 }) {
     const { body, statusCode, response } = option || {};
     response.status = `${statusCode}`;
-    response.statusDescription = "Bad Request";
+    response.statusDescription = 'Bad Request';
     response.body = body;
-    response.headers["content-type"] = [
+    response.headers['content-type'] = [
         {
-            key: "Content-Type",
-            value: "text/plain",
+            key: 'Content-Type',
+            value: 'text/plain',
         },
     ];
-    response.headers["lambda-edge"] = [
+    response.headers['lambda-edge'] = [
         {
-            key: "Lambda-Edge",
-            value: "error",
+            key: 'Lambda-Edge',
+            value: 'error',
         },
     ];
     return response;

@@ -1,5 +1,5 @@
-import { CLIENT_ERROR_PREFIX } from "@/common/constance";
-import { ImageAction, ImageActionName } from "../types";
+import { CLIENT_ERROR_PREFIX } from '@/common/constance';
+import { ImageAction, ImageActionName } from '../types';
 
 const VALID_ACTION: Record<
     ImageActionName,
@@ -14,7 +14,7 @@ const VALID_ACTION: Record<
         m: {
             required: true,
             validator: (value: any) =>
-                ["lfit", "mfit" /** "fill", "pad", "fixed" */].includes(value),
+                ['lfit', 'mfit' /** "fill", "pad", "fixed" */].includes(value),
         },
         w: {
             validator: (value: any) =>
@@ -29,7 +29,7 @@ const VALID_ACTION: Record<
                 Number(value) <= 4096,
         },
         limit: {
-            validator: (value: string) => ["0", "1"].includes(value),
+            validator: (value: string) => ['0', '1'].includes(value),
         },
     },
     quality: {
@@ -51,7 +51,7 @@ const VALID_ACTION: Record<
         f: {
             required: true,
             validator: (value: any) =>
-                ["jpg", "png", "webp", "heic", "gif", "auto"].includes(value),
+                ['jpg', 'png', 'webp', 'heic', 'gif', 'auto'].includes(value),
         },
     },
 };
