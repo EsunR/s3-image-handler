@@ -8,11 +8,13 @@
 -   使用 sharp 实现了图缩放、质量调整、格式调整等；
 -   支持图片格式自动择优使用 webp 格式。
 
+架构设计：[《使用 Lambda 函数实现 AWS S3 的图片裁剪、质量调整、自动 webp》](https://blog.esunr.xyz/2023/07/0608f5f6ff91.html)
+
 # 1. 部署流程
 
 ### 创建 Bucket 并为其创建 CloudFront 分配
 
-[详细教程](https://blog.esunr.xyz/2023/07/cd2440f9b860.html)
+参考：[《创建 AWS S3 公共存储桶并添加 CloudFront CDN 加速域名》](https://blog.esunr.xyz/2023/07/cd2440f9b860.html)
 
 ### 配置角色
 
@@ -173,18 +175,3 @@ Lambda 函数上传完成后需要部署到 Lambda@Edge 上才能生效。
 ## 图像格式
 
 操作符: `format`
-
-# 3. 缺陷
-
--   ~~Webp 不支持自动回落~~；[Resolved]
-    -   待验证：目前来说，如果是用 f_auto，服务端会生成一张 webp 格式的图片放置到 s3 上，但是当使用不支持 webp 的浏览器访问时，无法自动回落到原始格式。后期尝试是否可以通过 lambda@edge 的请求源函数来直接修改请求 uri，从而让用户获取回落格式的资源。
-    -   待验证：Cloudfront 会缓存请求资源如何处理？
--   大文图片处理速度慢，有可能会卡死（基本无法处理10M以上的图片）；
--   首次处理完图片后会以 base64 的方式返回给客户端，速度慢，而且支持的 base64 长度未知；
-    -   待验证：如果文件过大，处理完成后使用重定向来重新从 S3 获取资源，而不是强行返还图像产出。
--   仅支持公开权限的 bucket；
-
-# 4. 参考文档
-
--   [使用 Amazon S3 触发器创建缩略图](https://docs.aws.amazon.com/zh_cn/lambda/latest/dg/with-s3-tutorial.html)
--   [Customizing at the edge with Lambda@Edge](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/lambda-at-the-edge.html)
