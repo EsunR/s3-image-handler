@@ -5,15 +5,10 @@ import {
     S3Client,
 } from '@aws-sdk/client-s3';
 import util from 'util';
-import {
-    checkOriginFileRequestTimes,
-    loadEnv,
-    logTime,
-    opString2ImageActions,
-} from '../utils';
+import { loadEnv, logTime, opString2ImageActions } from '../utils';
 import { imageTransfer } from '../utils/image';
 
-const { BUCKET, MAX_IMAGE_HANDLE_TIMES } = loadEnv();
+const { BUCKET } = loadEnv();
 
 /**
  * CloudFront event handler
@@ -45,43 +40,11 @@ export default async function cfHandler(
     const { fileKey, originFileKey, opString } = parsedUri;
     console.log('parsedUri: ', parsedUri);
 
-    // 检查是否是恶意重复请求
-    if (MAX_IMAGE_HANDLE_TIMES) {
-        const modifiedResponse = checkOriginFileRequestTimes(
-            originFileKey,
-            response,
-            Number(MAX_IMAGE_HANDLE_TIMES),
-        );
-        if (modifiedResponse) {
-            return modifiedResponse;
-        }
-    }
-
     // 转换 & 校验 opString
     const actions = opString2ImageActions(opString);
 
-    // 获取原始文件的文件类型，如果是不是图片则直接返回请求结果
-    const originFileHead = await logTime(
-        () =>
-            s3Client.send(
-                new GetObjectCommand({
-                    Bucket: BUCKET,
-                    Key: originFileKey,
-                    Range: 'bytes=0-0',
-                }),
-            ),
-        'Get file head time',
-    );
-    const originFileContentType = originFileHead.ContentType;
-    if (!originFileContentType?.startsWith('image/')) {
-        console.log(
-            `File "${originFileKey}" is not a image, content type: ${originFileContentType}`,
-        );
-        return response;
-    }
-
     // 下载图片
-    const originImage = await logTime(
+    const originFile = await logTime(
         () =>
             s3Client.send(
                 new GetObjectCommand({
@@ -91,7 +54,14 @@ export default async function cfHandler(
             ),
         'Download time',
     );
-    const imageBuffer = await originImage.Body?.transformToByteArray();
+    const originFileContentType = originFile.ContentType;
+    if (!originFileContentType?.startsWith('image/')) {
+        console.log(
+            `File "${originFileKey}" is not a image, content type: ${originFileContentType}`,
+        );
+        return response;
+    }
+    const imageBuffer = await originFile.Body?.transformToByteArray();
 
     if (!imageBuffer) {
         throw new Error('Image buffer is empty');

@@ -7,7 +7,7 @@ aws lambda create-function \
     --zip-file fileb://dist/origin-response.zip \
     --handler $fucntion_hander \
     --runtime $runtime \
-    --timeout 10 \
+    --timeout 20 \
     --memory-size 1024 \
     --role $role_arn
 
