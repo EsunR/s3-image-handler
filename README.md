@@ -8,7 +8,7 @@
 -   使用 sharp 实现了图缩放、质量调整、格式调整等；
 -   支持图片格式自动择优使用 webp 格式。
 
-架构设计：[《使用 Lambda 函数实现 AWS S3 的图片裁剪、质量调整、自动 webp》](https://blog.esunr.xyz/2023/07/0608f5f6ff91.html)
+架构设计：[《使用 Lambda 函数实现 AWS S3 的图片裁剪、质量调整、自动 webp》](https://blog.esunr.xyz/2023/07/a7f4fe8c61e9.html)
 
 # 1. 部署流程
 
