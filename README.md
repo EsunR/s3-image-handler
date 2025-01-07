@@ -8,13 +8,13 @@
 -   使用 sharp 实现了图缩放、质量调整、格式调整等；
 -   支持图片格式自动择优使用 webp 格式。
 
-架构设计：[《使用 Lambda 函数实现 AWS S3 的图片裁剪、质量调整、自动 webp》](https://blog.esunr.xyz/2023/07/a7f4fe8c61e9.html)
+架构设计：[《使用 Lambda 函数实现 AWS S3 的图片裁剪、质量调整、自动 webp》](https://blog.esunr.site/2023/07/a7f4fe8c61e9.html)
 
 # 1. 部署流程
 
 ### 创建 Bucket 并为其创建 CloudFront 分配
 
-参考：[《创建 AWS S3 公共存储桶并添加 CloudFront CDN 加速域名》](https://blog.esunr.xyz/2023/07/cd2440f9b860.html)
+参考：[《创建 AWS S3 公共存储桶并添加 CloudFront CDN 加速域名》](https://blog.esunr.site/2023/07/cd2440f9b860.html)
 
 ### 配置角色
 
